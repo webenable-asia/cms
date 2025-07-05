@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"golang.org/x/crypto/bcrypt"
+	"time"
+)
 
 type Post struct {
 	ID            string     `json:"id,omitempty" db:"_id"`
@@ -39,12 +42,15 @@ type Category struct {
 }
 
 type User struct {
-	ID       string `json:"id,omitempty" db:"_id"`
-	Rev      string `json:"rev,omitempty" db:"_rev"`
-	Username string `json:"username" validate:"required"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password,omitempty" validate:"required"`
-	Role     string `json:"role"` // admin, editor, author
+	ID           string    `json:"id,omitempty" db:"_id"`
+	Rev          string    `json:"rev,omitempty" db:"_rev"`
+	Username     string    `json:"username" validate:"required,min=3,max=20"`
+	Email        string    `json:"email" validate:"required,email"`
+	PasswordHash string    `json:"password_hash,omitempty"`
+	Role         string    `json:"role" validate:"required,oneof=admin editor author"`
+	Active       bool      `json:"active"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Contact struct {
@@ -70,4 +76,18 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+}
+
+func (u *User) SetPassword(password string) error {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		return err
+	}
+	u.PasswordHash = string(bytes)
+	return nil
+}
+
+func (u *User) CheckPassword(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password))
+	return err == nil
 }

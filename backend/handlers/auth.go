@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"webenable-cms-backend/config"
+	"webenable-cms-backend/database"
 	"webenable-cms-backend/middleware"
 	"webenable-cms-backend/models"
 
@@ -13,24 +15,29 @@ import (
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var loginReq models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// In a real application, you would validate credentials against database
-	// For demo purposes, we'll use hardcoded credentials
-	if loginReq.Username != "admin" || loginReq.Password != "password" {
+	// Get user from database
+	user, err := database.GetUserByUsername(loginReq.Username)
+	if err != nil {
+		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		return
+	}
+
+	if user == nil || !user.CheckPassword(loginReq.Password) || !user.Active {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	// Create JWT token
 	claims := &middleware.Claims{
-		Username: loginReq.Username,
-		Role:     "admin",
+		Username: user.Username,
+		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -38,7 +45,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte("your-secret-key"))
+	tokenString, err := token.SignedString(config.AppConfig.JWTSecret)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
@@ -47,8 +54,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	response := models.LoginResponse{
 		Token: tokenString,
 		User: models.User{
-			Username: loginReq.Username,
-			Role:     "admin",
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     user.Role,
 		},
 	}
 

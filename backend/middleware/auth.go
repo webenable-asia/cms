@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"webenable-cms-backend/config"
 )
-
-var jwtSecret = []byte("your-secret-key") // In production, use environment variable
 
 type Claims struct {
 	Username string `json:"username"`
@@ -34,7 +33,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		claims := &Claims{}
 
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
+			return config.AppConfig.JWTSecret, nil
 		})
 
 		if err != nil || !token.Valid {

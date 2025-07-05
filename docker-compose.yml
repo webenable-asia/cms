@@ -11,6 +11,21 @@ services:
     volumes:
       - couchdb_data:/opt/couchdb/data
 
+  cache:
+    image: docker.io/valkey/valkey:alpine3.22
+    restart: always
+    ports:
+      - "6379:6379"
+    command: valkey-server --requirepass valkeypassword --appendonly yes
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "valkeypassword", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   backend:
     build: ./backend
     ports:
@@ -19,8 +34,14 @@ services:
       - ./backend:/app
     depends_on:
       - db
+      - cache
     environment:
       - COUCHDB_URL=http://admin:password@db:5984/
+      - VALKEY_URL=redis://:valkeypassword@cache:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - SESSION_DOMAIN=localhost
+      - SESSION_SECURE=false
+      - CORS_ORIGINS=http://localhost:3000
 
   frontend:
     build: ./frontend
@@ -32,9 +53,11 @@ services:
       - /app/.next
     depends_on:
       - backend
+      - cache
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - BACKEND_URL=http://backend:8080
 
 volumes:
   couchdb_data:
+  valkey_data:
