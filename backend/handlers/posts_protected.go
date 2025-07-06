@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -14,9 +15,23 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// CreatePost godoc
+//
+//	@Summary		Create new post
+//	@Description	Create a new post (authenticated users only)
+//	@Tags			Posts
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			post	body		models.Post	true	"Post data"
+//	@Success		201		{object}	models.Post
+//	@Failure		400		{object}	models.ErrorResponse
+//	@Failure		401		{object}	models.ErrorResponse
+//	@Failure		500		{object}	models.ErrorResponse
+//	@Router			/posts [post]
 func CreatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var post models.Post
 	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -39,17 +54,17 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	// Create a document map with proper CouchDB fields
 	doc := map[string]interface{}{
-		"_id":          postID,
-		"title":        post.Title,
-		"content":      post.Content,
-		"excerpt":      post.Excerpt,
-		"author":       post.Author,
-		"status":       post.Status,
-		"tags":         post.Tags,
-		"created_at":   post.CreatedAt,
-		"updated_at":   post.UpdatedAt,
+		"_id":        postID,
+		"title":      post.Title,
+		"content":    post.Content,
+		"excerpt":    post.Excerpt,
+		"author":     post.Author,
+		"status":     post.Status,
+		"tags":       post.Tags,
+		"created_at": post.CreatedAt,
+		"updated_at": post.UpdatedAt,
 	}
-	
+
 	if post.PublishedAt != nil {
 		doc["published_at"] = post.PublishedAt
 	}
@@ -62,11 +77,40 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post.Rev = rev
+
+	// Invalidate posts list cache
+	if globalCache != nil {
+		go func() {
+			err := globalCache.InvalidatePostsListCache()
+			if err != nil {
+				fmt.Printf("Failed to invalidate posts list cache: %v\n", err)
+			}
+		}()
+	}
+
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(post)
 }
+
+// UpdatePost godoc
+//
+//	@Summary		Update post
+//	@Description	Update an existing post (authenticated users only)
+//	@Tags			Posts
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string		true	"Post ID"
+//	@Param			post	body		models.Post	true	"Post data"
+//	@Success		200		{object}	models.Post
+//	@Failure		400		{object}	models.ErrorResponse
+//	@Failure		401		{object}	models.ErrorResponse
+//	@Failure		404		{object}	models.ErrorResponse
+//	@Failure		500		{object}	models.ErrorResponse
+//	@Router			/posts/{id} [put]
 func UpdatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -77,7 +121,7 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	
+
 	// Get existing post
 	row := database.Instance.PostsDB.Get(ctx, id)
 	var existingPost models.Post
@@ -107,18 +151,18 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	// Create a document map with proper CouchDB fields
 	doc := map[string]interface{}{
-		"_id":          existingPost.ID,
-		"_rev":         existingPost.Rev,
-		"title":        existingPost.Title,
-		"content":      existingPost.Content,
-		"excerpt":      existingPost.Excerpt,
-		"author":       existingPost.Author,
-		"status":       existingPost.Status,
-		"tags":         existingPost.Tags,
-		"created_at":   existingPost.CreatedAt,
-		"updated_at":   existingPost.UpdatedAt,
+		"_id":        existingPost.ID,
+		"_rev":       existingPost.Rev,
+		"title":      existingPost.Title,
+		"content":    existingPost.Content,
+		"excerpt":    existingPost.Excerpt,
+		"author":     existingPost.Author,
+		"status":     existingPost.Status,
+		"tags":       existingPost.Tags,
+		"created_at": existingPost.CreatedAt,
+		"updated_at": existingPost.UpdatedAt,
 	}
-	
+
 	if existingPost.PublishedAt != nil {
 		doc["published_at"] = existingPost.PublishedAt
 	}
@@ -131,17 +175,48 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existingPost.Rev = rev
+
+	// Invalidate caches
+	if globalCache != nil {
+		go func() {
+			// Invalidate specific post cache
+			err := globalCache.InvalidatePostCache(id)
+			if err != nil {
+				fmt.Printf("Failed to invalidate post cache for %s: %v\n", id, err)
+			}
+			// Invalidate posts list cache
+			err = globalCache.InvalidatePostsListCache()
+			if err != nil {
+				fmt.Printf("Failed to invalidate posts list cache: %v\n", err)
+			}
+		}()
+	}
+
 	json.NewEncoder(w).Encode(existingPost)
 }
 
+// DeletePost godoc
+//
+//	@Summary		Delete post
+//	@Description	Delete a post (authenticated users only)
+//	@Tags			Posts
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Post ID"
+//	@Success		200	{object}	models.SuccessResponse
+//	@Failure		401	{object}	models.ErrorResponse
+//	@Failure		404	{object}	models.ErrorResponse
+//	@Failure		500	{object}	models.ErrorResponse
+//	@Router			/posts/{id} [delete]
 func DeletePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	ctx := context.Background()
-	
+
 	// Get existing post to get revision
 	row := database.Instance.PostsDB.Get(ctx, id)
 	var post models.Post
@@ -163,5 +238,22 @@ func DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// Invalidate caches
+	if globalCache != nil {
+		go func() {
+			// Invalidate specific post cache
+			err := globalCache.InvalidatePostCache(id)
+			if err != nil {
+				fmt.Printf("Failed to invalidate post cache for %s: %v\n", id, err)
+			}
+			// Invalidate posts list cache
+			err = globalCache.InvalidatePostsListCache()
+			if err != nil {
+				fmt.Printf("Failed to invalidate posts list cache: %v\n", err)
+			}
+		}()
+	}
+
+	response := map[string]string{"message": "Post deleted successfully"}
+	json.NewEncoder(w).Encode(response)
 }

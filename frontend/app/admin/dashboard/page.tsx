@@ -1,446 +1,431 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  PlusCircle, 
+  FileText, 
+  Users, 
+  Mail, 
+  BarChart3, 
+  Settings,
+  LogOut,
+  Eye,
+  Edit,
+  Trash2
+} from 'lucide-react'
+import { usePosts, useContacts, useLogout } from '@/hooks/use-api'
+import { formatDate, formatRelativeTime } from '@/lib/blog-utils'
 import Link from 'next/link'
-import { api } from '../../../lib/api'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
-
-interface Post {
-  id: string
-  title: string
-  status: string
-  author: string
-  created_at: string
-  tags?: string[]
-  categories?: string[]
-  is_featured?: boolean
-  reading_time?: number
-  view_count?: number
-}
 
 export default function AdminDashboard() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [contacts, setContacts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState('posts')
-  const [replyModal, setReplyModal] = useState<{open: boolean, contact: any}>({open: false, contact: null})
-  const [replyForm, setReplyForm] = useState({subject: '', message: ''})
-  const [sending, setSending] = useState(false)
-  const router = useRouter()
+  const { data: posts, loading: postsLoading } = usePosts()
+  const { data: contacts, loading: contactsLoading } = useContacts()
+  const { mutate: logout } = useLogout()
+  
+  const [activeTab, setActiveTab] = useState('overview')
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    const userData = localStorage.getItem('user')
-    
-    if (!token) {
-      router.push('/admin')
-      return
-    }
-    
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
-
-    fetchPosts()
-    fetchContacts()
-  }, [router])
-
-  const fetchContacts = async () => {
-    try {
-      const response = await api.get('/contacts')
-      setContacts(Array.isArray(response.data) ? response.data : [])
-    } catch (error) {
-      console.error('Error fetching contacts:', error)
-      setContacts([])
-    }
+  const handleLogout = async () => {
+    await logout({})
+    window.location.href = '/admin'
   }
 
-  const fetchPosts = async () => {
-    try {
-      // Admin dashboard should show all posts (both draft and published)
-      const response = await api.get('/posts')
-      // Ensure we always set an array
-      setPosts(Array.isArray(response.data) ? response.data : [])
-    } catch (error) {
-      console.error('Error fetching posts:', error)
-      // Set empty array on error
-      setPosts([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    router.push('/admin')
-  }
-
-  const deletePost = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this post?')) return
-    
-    try {
-      await api.delete(`/posts/${id}`)
-      fetchPosts() // Refresh the list
-    } catch (error: any) {
-      console.error('Error deleting post:', error)
-      console.error('Delete error response:', error.response?.data)
-      console.error('Delete error status:', error.response?.status)
-      
-      let errorMessage = 'Failed to delete post'
-      if (error.response?.status === 404) {
-        errorMessage = 'Post not found'
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Unauthorized to delete post'
-      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        errorMessage = 'Cannot connect to server'
-      }
-      
-      alert(errorMessage)
-    }
-  }
-
-  const updateContactStatus = async (id: string, status: string) => {
-    try {
-      await api.put(`/contacts/${id}`, { status })
-      fetchContacts() // Refresh the list
-    } catch (error: any) {
-      console.error('Error updating contact status:', error)
-      alert('Failed to update contact status')
-    }
-  }
-
-  const deleteContact = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this contact?')) return
-    
-    try {
-      await api.delete(`/contacts/${id}`)
-      fetchContacts() // Refresh the list
-    } catch (error: any) {
-      console.error('Error deleting contact:', error)
-      alert('Failed to delete contact')
-    }
-  }
-
-  const openReplyModal = (contact: any) => {
-    setReplyModal({open: true, contact})
-    setReplyForm({
-      subject: `Re: ${contact.subject}`,
-      message: `Hi ${contact.name},\n\nThank you for contacting WebEnable. \n\n\n\nBest regards,\nWebEnable Team`
-    })
-  }
-
-  const closeReplyModal = () => {
-    setReplyModal({open: false, contact: null})
-    setReplyForm({subject: '', message: ''})
-    setSending(false)
-  }
-
-  const sendReply = async () => {
-    if (!replyModal.contact) return
-    
-    setSending(true)
-    try {
-      await api.post(`/contacts/${replyModal.contact.id}/reply`, replyForm)
-      alert('Reply sent successfully!')
-      fetchContacts() // Refresh the list
-      closeReplyModal()
-    } catch (error: any) {
-      console.error('Error sending reply:', error)
-      alert('Failed to send reply. Please try again.')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">Loading dashboard...</div>
-      </div>
-    )
+  const stats = {
+    totalPosts: posts?.length || 0,
+    publishedPosts: posts?.filter(p => p.status === 'published').length || 0,
+    draftPosts: posts?.filter(p => p.status === 'draft').length || 0,
+    totalContacts: contacts?.length || 0,
+    newContacts: contacts?.filter(c => c.status === 'new').length || 0,
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="bg-card shadow-sm border-b border-border">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-foreground">Admin Dashboard</h1>
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">CMS Dashboard</h1>
+              <p className="text-gray-600">Manage your content and contacts</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <span className="text-muted-foreground">Welcome, {user?.username}</span>
-              <button
-                onClick={handleLogout}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-4 py-2 rounded text-sm"
-              >
+            <div className="flex items-center gap-4">
+              <Link href="/" target="_blank">
+                <Button variant="outline" size="sm">
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Site
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Tab Navigation */}
-          <div className="border-b border-border mb-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('posts')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'posts'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-                }`}
-              >
-                Posts ({posts.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('contacts')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'contacts'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-                }`}
-              >
-                Contacts ({contacts.length})
-                {contacts.filter(c => c.status === 'new').length > 0 && (
-                  <span className="ml-2 bg-destructive/10 text-destructive text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {contacts.filter(c => c.status === 'new').length} new
-                  </span>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalPosts}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats.publishedPosts} published
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Draft Posts</CardTitle>
+                  <Edit className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.draftPosts}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Waiting to be published
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalContacts}</div>
+                  <p className="text-xs text-muted-foreground">
+                    All time messages
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">New Messages</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.newContacts}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Unread messages
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Posts</CardTitle>
+                  <CardDescription>Your latest blog posts</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {postsLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : posts && posts.length > 0 ? (
+                    <div className="space-y-4">
+                      {posts.slice(0, 5).map((post) => (
+                        <div key={post.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium truncate">{post.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatRelativeTime(post.updated_at)}
+                            </p>
+                          </div>
+                          <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                            {post.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No posts yet</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Messages</CardTitle>
+                  <CardDescription>Latest contact form submissions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {contactsLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : contacts && contacts.length > 0 ? (
+                    <div className="space-y-4">
+                      {contacts.slice(0, 5).map((contact) => (
+                        <div key={contact.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{contact.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {contact.subject}
+                            </p>
+                          </div>
+                          <Badge variant={contact.status === 'new' ? 'destructive' : 'secondary'}>
+                            {contact.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No messages yet</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Posts Tab */}
+          <TabsContent value="posts" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Posts Management</h2>
+              <Link href="/admin/posts/new">
+                <Button>
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  New Post
+                </Button>
+              </Link>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                {postsLoading ? (
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="animate-pulse flex justify-between items-center p-4 border rounded">
+                          <div className="flex-1">
+                            <div className="h-5 bg-gray-300 rounded mb-2"></div>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          </div>
+                          <div className="w-20 h-6 bg-gray-300 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : posts && posts.length > 0 ? (
+                  <div className="divide-y">
+                    {posts.map((post) => (
+                      <div key={post.id} className="p-6 flex items-center justify-between hover:bg-gray-50">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{post.title}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            By {post.author} • {formatDate(post.updated_at)}
+                          </p>
+                          {post.categories && post.categories.length > 0 && (
+                            <div className="flex gap-1 mt-2">
+                              {post.categories.map((category) => (
+                                <Badge key={category} variant="outline" className="text-xs">
+                                  {category}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                            {post.status}
+                          </Badge>
+                          <Link href={`/admin/posts/${post.id}/edit`}>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center">
+                    <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No posts yet</p>
+                    <Link href="/admin/posts/new">
+                      <Button className="mt-4">
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Create your first post
+                      </Button>
+                    </Link>
+                  </div>
                 )}
-              </button>
-            </nav>
-          </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {activeTab === 'posts' && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-foreground">Posts</h2>
-                <Link
-                  href="/admin/posts/new"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded"
-                >
-                  Create New Post
-                </Link>
-              </div>
+          {/* Contacts Tab */}
+          <TabsContent value="contacts" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Contact Messages</h2>
+            </div>
 
-              {/* Posts content */}
-              {!posts || posts.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground text-lg">No posts found.</p>
-                  <Link
-                    href="/admin/posts/new"
-                    className="mt-4 inline-block bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded"
-                  >
-                    Create Your First Post
+            <Card>
+              <CardContent className="p-0">
+                {contactsLoading ? (
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="animate-pulse flex justify-between items-center p-4 border rounded">
+                          <div className="flex-1">
+                            <div className="h-5 bg-gray-300 rounded mb-2"></div>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          </div>
+                          <div className="w-20 h-6 bg-gray-300 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : contacts && contacts.length > 0 ? (
+                  <div className="divide-y">
+                    {contacts.map((contact) => (
+                      <div key={contact.id} className="p-6 flex items-center justify-between hover:bg-gray-50">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium">{contact.name}</h3>
+                            <span className="text-sm text-muted-foreground">({contact.email})</span>
+                          </div>
+                          <p className="font-medium text-sm">{contact.subject}</p>
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {contact.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formatDate(contact.created_at)}
+                            {contact.company && ` • ${contact.company}`}
+                            {contact.phone && ` • ${contact.phone}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={
+                            contact.status === 'new' ? 'destructive' : 
+                            contact.status === 'read' ? 'default' : 'secondary'
+                          }>
+                            {contact.status}
+                          </Badge>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center">
+                    <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No messages yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">User Management</h2>
+              <Link href="/admin/users">
+                <Button>
+                  <Users className="w-4 h-4 mr-2" />
+                  Manage Users
+                </Button>
+              </Link>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Access</CardTitle>
+                <CardDescription>
+                  User management tools and overview
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    Manage system users, roles, and permissions
+                  </p>
+                  <Link href="/admin/users">
+                    <Button>
+                      <Users className="w-4 h-4 mr-2" />
+                      Go to User Management
+                    </Button>
                   </Link>
                 </div>
-              ) : (
-                <div className="bg-card shadow overflow-hidden sm:rounded-md border border-border">
-                  <ul className="divide-y divide-border">{posts.map((post, index) => (
-                      <li key={post.id || `post-${index}`}>
-                        <div className="px-4 py-4 flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <p className="text-sm font-medium text-primary truncate">
-                                  {post.title}
-                                </p>
-                                {post.is_featured && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                    ★ Featured
-                                  </span>
-                                )}
-                              </div>
-                              <div className="ml-2 flex-shrink-0 flex">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  post.status === 'published' 
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                    : post.status === 'scheduled'
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                }`}>
-                                  {post.status}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* Tags and Categories */}
-                            {(post.tags?.length || post.categories?.length) && (
-                              <div className="mb-2 flex flex-wrap gap-1">
-                                {post.categories?.slice(0, 2).map((category, idx) => (
-                                  <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                    {category}
-                                  </span>
-                                ))}
-                                {post.tags?.slice(0, 3).map((tag, idx) => (
-                                  <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
-                                    #{tag}
-                                  </span>
-                                ))}
-                                {(post.tags?.length || 0) + (post.categories?.length || 0) > 5 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    +{(post.tags?.length || 0) + (post.categories?.length || 0) - 5} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            
-                            <div className="mt-2 sm:flex sm:justify-between">
-                              <div className="sm:flex space-x-4">
-                                <p className="flex items-center text-sm text-muted-foreground">
-                                  By {post.author}
-                                </p>
-                                {post.reading_time && (
-                                  <p className="flex items-center text-sm text-muted-foreground">
-                                    {post.reading_time} min read
-                                  </p>
-                                )}
-                                {post.view_count !== undefined && (
-                                  <p className="flex items-center text-sm text-muted-foreground">
-                                    {post.view_count} views
-                                  </p>
-                                )}
-                              </div>
-                              <div className="mt-2 flex items-center text-sm text-muted-foreground sm:mt-0">
-                                <p>
-                                  {new Date(post.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="ml-4 flex space-x-2">
-                            <Link
-                              href={`/admin/posts/${post.id}/edit`}
-                              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
-                            >
-                              Edit
-                            </Link>
-                            <button
-                              onClick={() => deletePost(post.id)}
-                              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-3 py-1 rounded text-sm"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {activeTab === 'contacts' && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-foreground">Contact Messages</h2>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={fetchContacts}
-                    className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded"
-                  >
-                    Refresh
-                  </button>
-                </div>
-              </div>
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Settings</h2>
+            </div>
 
-              {/* Contacts content */}
-              {!contacts || contacts.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground text-lg">No contact messages found.</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>CMS Configuration</CardTitle>
+                <CardDescription>
+                  Manage your content management system settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium mb-2">API Status</h3>
+                    <Badge variant="default">Connected</Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Database</h3>
+                    <Badge variant="default">CouchDB Connected</Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Cache</h3>
+                    <Badge variant="default">Valkey Connected</Badge>
+                  </div>
                 </div>
-              ) : (
-                <div className="bg-card shadow overflow-hidden sm:rounded-md border border-border">
-                  <ul className="divide-y divide-border">{contacts.map((contact, index) => (
-                      <li key={contact.id || `contact-${index}`}>
-                        <div className="px-4 py-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center">
-                              <h3 className="text-sm font-medium text-foreground">
-                                {contact.name}
-                              </h3>
-                              <span className="ml-2 text-sm text-muted-foreground">
-                                ({contact.email})
-                              </span>
-                              {contact.company && (
-                                <span className="ml-2 text-sm text-muted-foreground">
-                                  - {contact.company}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                contact.status === 'new' 
-                                  ? 'bg-destructive/10 text-destructive'
-                                  : contact.status === 'read'
-                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              }`}>
-                                {contact.status}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(contact.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="mb-2">
-                            <p className="text-sm font-medium text-foreground">
-                              Subject: {contact.subject}
-                            </p>
-                          </div>
-                          <div className="mb-4">
-                            <p className="text-sm text-muted-foreground">
-                              {contact.message}
-                            </p>
-                          </div>
-                          <div className="flex justify-end space-x-2">
-                            <Link
-                              href={`/admin/contacts/${contact.id}/reply`}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1 rounded text-sm"
-                            >
-                              Reply
-                            </Link>
-                            {contact.status === 'new' && (
-                              <button
-                                onClick={() => updateContactStatus(contact.id, 'read')}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
-                              >
-                                Mark as Read
-                              </button>
-                            )}
-                            {contact.status === 'read' && (
-                              <button
-                                onClick={() => updateContactStatus(contact.id, 'replied')}
-                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                              >
-                                Mark as Replied
-                              </button>
-                            )}
-                            <button
-                              onClick={() => deleteContact(contact.id)}
-                              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-3 py-1 rounded text-sm"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   )
 }

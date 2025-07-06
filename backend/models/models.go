@@ -1,8 +1,9 @@
 package models
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Post struct {
@@ -42,8 +43,8 @@ type Category struct {
 }
 
 type User struct {
-	ID           string    `json:"id,omitempty" db:"_id"`
-	Rev          string    `json:"rev,omitempty" db:"_rev"`
+	ID           string    `json:"id,omitempty"`
+	Rev          string    `json:"_rev,omitempty"`
 	Username     string    `json:"username" validate:"required,min=3,max=20"`
 	Email        string    `json:"email" validate:"required,email"`
 	PasswordHash string    `json:"password_hash,omitempty"`
@@ -76,6 +77,26 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+}
+
+// ErrorResponse represents an error response
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
+}
+
+// SuccessResponse represents a success response
+type SuccessResponse struct {
+	Message string `json:"message"`
+}
+
+// UserStatsResponse represents user statistics
+type UserStatsResponse struct {
+	TotalUsers  int `json:"total_users"`
+	AdminUsers  int `json:"admin_users"`
+	EditorUsers int `json:"editor_users"`
+	AuthorUsers int `json:"author_users"`
+	ActiveUsers int `json:"active_users"`
 }
 
 func (u *User) SetPassword(password string) error {

@@ -20,26 +20,86 @@ A modern content management system built with Next.js 15, Go 1.24, and CouchDB.
 - Node.js 20+ (for local development)
 - Go 1.24+ (for local development - released February 2025)
 
-## Quick Start
+## Quick Start (Docker - Recommended)
+
+**WebEnable CMS is designed to run with Docker Compose for the complete development experience.**
 
 1. **Clone and navigate to the project:**
    ```bash
    cd /Users/tsaa/workspace/projects/webenable/cms
    ```
 
-2. **Start the development environment:**
+2. **Start all services with our helper script:**
+   ```bash
+   ./dev.sh start
+   ```
+   
+   Or manually with Docker Compose:
    ```bash
    docker-compose up --build
    ```
 
 3. **Access the applications:**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080
-   - CouchDB: http://localhost:5984 (admin/password)
+   - **Frontend**: http://localhost:3000 (Next.js 15.3.5)
+   - **Backend API**: http://localhost:8080 (Go 1.24)
+   - **CouchDB Admin**: http://localhost:5984/_utils (admin/password)
+   - **Valkey Cache**: localhost:6379
 
 4. **Default admin credentials:**
    - Username: `admin`
    - Password: `password`
+
+## Documentation
+
+- **[Docker Development Guide](DOCKER.md)** - Complete Docker setup and workflow
+- **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details
+- **[Backend README](backend/README.md)** - Go 1.24 backend documentation
+- **[Security Implementation](SECURITY_IMPLEMENTATION_COMPLETE.md)** - Security features and setup
+
+## Development Helper Script
+
+Use the included `dev.sh` script for easier development:
+
+```bash
+./dev.sh start     # Start all services
+./dev.sh stop      # Stop all services
+./dev.sh logs      # View logs
+./dev.sh build     # Rebuild services
+./dev.sh status    # Check service status
+./dev.sh frontend  # Open frontend in browser
+./dev.sh help      # Show all commands
+```
+
+## Docker Architecture
+
+WebEnable CMS uses a multi-container Docker setup for development:
+
+### Services
+
+| Service | Technology | Port | Purpose |
+|---------|------------|------|---------|
+| **frontend** | Next.js 15.3.5 | 3000 | React frontend with SSR |
+| **backend** | Go 1.24 | 8080 | RESTful API server |
+| **db** | CouchDB 3 | 5984 | Document database |
+| **cache** | Valkey (Redis) | 6379 | Session & cache storage |
+
+### Container Features
+
+- **Hot Reload**: Frontend and backend support live reloading
+- **Volume Mounts**: Source code mounted for development
+- **Health Checks**: Automated service health monitoring
+- **Auto Restart**: Services restart automatically on failure
+- **Environment Variables**: Configurable through docker-compose.yml
+
+### Network Communication
+
+```
+Frontend (3000) ←→ Backend (8080) ←→ Database (5984)
+                         ↓
+                    Cache (6379)
+```
+
+All services communicate through Docker's internal network, with only necessary ports exposed to the host.
 
 ## Project Structure
 

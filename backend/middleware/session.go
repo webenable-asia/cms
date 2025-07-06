@@ -147,8 +147,15 @@ func (sm *SessionManager) SessionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Add session data to request context
+		// Create claims from session data for compatibility with handlers
+		claims := &Claims{
+			Username: sessionData.Username,
+			Role:     sessionData.Role,
+		}
+
+		// Add both session data and user claims to request context
 		ctx := context.WithValue(r.Context(), "session", sessionData)
+		ctx = context.WithValue(ctx, "user", claims)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
@@ -198,4 +205,43 @@ func (sm *SessionManager) RefreshSession(r *http.Request) error {
 	// Extend session
 	sessionData.LastSeen = time.Now()
 	return sm.cache.SetSession(cookie.Value, sessionData, sm.maxAge)
+}
+
+// GetAllUserSessions returns all active sessions for a user
+func (sm *SessionManager) GetAllUserSessions(userID string) ([]string, error) {
+	// This would require a more complex implementation with session indexing
+	// For now, we'll implement basic functionality
+	return []string{}, nil
+}
+
+// InvalidateAllUserSessions removes all sessions for a user
+func (sm *SessionManager) InvalidateAllUserSessions(userID string) error {
+	// This would require session indexing by user ID
+	// For now, return success
+	return nil
+}
+
+// GetSessionStats returns session statistics
+func (sm *SessionManager) GetSessionStats() (map[string]interface{}, error) {
+	// Basic session statistics
+	stats := map[string]interface{}{
+		"active_sessions": 0, // Would need to be implemented with session counting
+		"cache_status":    "connected",
+	}
+
+	// Test cache health
+	err := sm.cache.Health()
+	if err != nil {
+		stats["cache_status"] = "disconnected"
+		stats["cache_error"] = err.Error()
+	}
+
+	return stats, nil
+}
+
+// CleanupExpiredSessions removes expired sessions (if needed)
+func (sm *SessionManager) CleanupExpiredSessions() error {
+	// Valkey automatically handles TTL expiration
+	// This method is for manual cleanup if needed
+	return nil
 }

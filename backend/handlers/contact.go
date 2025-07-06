@@ -9,15 +9,28 @@ import (
 	"webenable-cms-backend/database"
 	"webenable-cms-backend/models"
 
-	"github.com/google/uuid"
 	"github.com/go-kivik/kivik/v4"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
+// SubmitContact godoc
+//
+//	@Summary		Submit contact form
+//	@Description	Submit a contact form (public endpoint)
+//	@Tags			Contact
+//	@Accept			json
+//	@Produce		json
+//	@Param			contact	body		models.Contact	true	"Contact form data"
+//	@Success		201		{object}	models.Contact
+//	@Failure		400		{object}	models.ErrorResponse
+//	@Failure		500		{object}	models.ErrorResponse
+//	@Router			/contact [post]
+//
 // Public endpoint - no auth required
 func SubmitContact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var contact models.Contact
 	if err := json.NewDecoder(r.Body).Decode(&contact); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -63,10 +76,10 @@ func SubmitContact(w http.ResponseWriter, r *http.Request) {
 // Protected endpoints - require authentication
 func GetContacts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	// Get status filter from query parameters
 	statusFilter := r.URL.Query().Get("status")
-	
+
 	ctx := context.Background()
 	rows := database.Instance.ContactsDB.AllDocs(ctx, kivik.Param("include_docs", true))
 	defer rows.Close()
@@ -77,7 +90,7 @@ func GetContacts(w http.ResponseWriter, r *http.Request) {
 		if err := rows.ScanDoc(&contact); err != nil {
 			continue
 		}
-		
+
 		// Ensure the document ID and revision are set properly
 		if id, err := rows.ID(); err == nil && id != "" {
 			contact.ID = id
@@ -85,12 +98,12 @@ func GetContacts(w http.ResponseWriter, r *http.Request) {
 		if rev, err := rows.Rev(); err == nil && rev != "" {
 			contact.Rev = rev
 		}
-		
+
 		// Filter by status if specified
 		if statusFilter != "" && contact.Status != statusFilter {
 			continue
 		}
-		
+
 		contacts = append(contacts, contact)
 	}
 
@@ -99,13 +112,13 @@ func GetContacts(w http.ResponseWriter, r *http.Request) {
 
 func GetContact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	ctx := context.Background()
 	row := database.Instance.ContactsDB.Get(ctx, id)
-	
+
 	var contact models.Contact
 	if err := row.ScanDoc(&contact); err != nil {
 		http.Error(w, "Contact not found", http.StatusNotFound)
@@ -123,7 +136,7 @@ func GetContact(w http.ResponseWriter, r *http.Request) {
 
 func UpdateContactStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -136,7 +149,7 @@ func UpdateContactStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	
+
 	// Get existing contact
 	row := database.Instance.ContactsDB.Get(ctx, id)
 	var existingContact models.Contact
@@ -175,7 +188,7 @@ func UpdateContactStatus(w http.ResponseWriter, r *http.Request) {
 		"status":     existingContact.Status,
 		"created_at": existingContact.CreatedAt,
 	}
-	
+
 	if existingContact.ReadAt != nil {
 		doc["read_at"] = existingContact.ReadAt
 	}
@@ -196,12 +209,12 @@ func UpdateContactStatus(w http.ResponseWriter, r *http.Request) {
 
 func DeleteContact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	ctx := context.Background()
-	
+
 	// Get existing contact to get revision
 	row := database.Instance.ContactsDB.Get(ctx, id)
 	var contact models.Contact
@@ -228,7 +241,7 @@ func DeleteContact(w http.ResponseWriter, r *http.Request) {
 
 func ReplyToContact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -236,7 +249,7 @@ func ReplyToContact(w http.ResponseWriter, r *http.Request) {
 		Subject string `json:"subject"`
 		Message string `json:"message"`
 	}
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&replyData); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -281,7 +294,7 @@ func ReplyToContact(w http.ResponseWriter, r *http.Request) {
 		"created_at": contact.CreatedAt,
 		"replied_at": contact.RepliedAt,
 	}
-	
+
 	if contact.ReadAt != nil {
 		doc["read_at"] = contact.ReadAt
 	}

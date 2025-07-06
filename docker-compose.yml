@@ -41,10 +41,13 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
       - SESSION_DOMAIN=localhost
       - SESSION_SECURE=false
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+      - ADMIN_PASSWORD=admin123
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     volumes:
@@ -53,10 +56,11 @@ services:
       - /app/.next
     depends_on:
       - backend
-      - cache
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - BACKEND_URL=http://backend:8080
+      - NODE_ENV=development
+    restart: unless-stopped
 
 volumes:
   couchdb_data:
