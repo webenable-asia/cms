@@ -26,8 +26,10 @@ import (
 	"net/http"
 	"time"
 
+	"webenable-cms-backend/adapters"
 	"webenable-cms-backend/cache"
 	"webenable-cms-backend/config"
+	"webenable-cms-backend/container"
 	"webenable-cms-backend/database"
 	_ "webenable-cms-backend/docs"
 	"webenable-cms-backend/handlers"
@@ -45,10 +47,30 @@ func main() {
 	// Initialize configuration
 	config.Init()
 
-	// Initialize database
+	// Initialize legacy database (for backward compatibility during migration)
 	database.Init()
 
-	// Initialize Valkey cache
+	// Create adapter factory
+	factory := adapters.NewAdapterFactory(config.AppConfig.Adapters)
+
+	// Create all adapters
+	adapterSet, err := factory.CreateAllAdapters()
+	if err != nil {
+		utils.LogError(err, "Failed to create adapters", logrus.Fields{})
+		panic(err)
+	}
+	defer adapterSet.Close()
+
+	// Check adapter health
+	if err := adapterSet.Health(); err != nil {
+		utils.LogError(err, "Adapter health check failed", logrus.Fields{})
+		panic(err)
+	}
+
+	// Create service container
+	serviceContainer := container.NewContainer(adapterSet)
+
+	// Initialize legacy Valkey client for backward compatibility
 	valkeyClient, err := cache.NewValkeyClient(config.AppConfig.ValkeyURL)
 	if err != nil {
 		utils.LogError(err, "Failed to connect to Valkey", logrus.Fields{
@@ -58,15 +80,21 @@ func main() {
 	}
 	defer valkeyClient.Close()
 
-	// Set global cache for handlers
+	// Set global dependencies for handlers (legacy support)
 	handlers.SetGlobalCache(valkeyClient)
 
-	// Initialize middleware
+	// Initialize middleware using adapters
 	rateLimiter := middleware.NewRateLimiter(valkeyClient)
 	pageCache := middleware.NewPageCache(valkeyClient).WithTTL(10 * time.Minute)
 
 	// Set global rate limiter for handlers
 	handlers.SetGlobalRateLimiter(rateLimiter)
+
+	// Set service container for handlers
+	handlers.SetServiceContainer(serviceContainer)
+
+	// Set service container for middleware
+	middleware.SetServiceContainer(serviceContainer)
 
 	// Initialize router
 	r := mux.NewRouter()
@@ -92,21 +120,36 @@ func main() {
 	// Health check endpoint
 	// HealthCheck godoc
 	//	@Summary		Health check
-	//	@Description	Check API and cache health status
+	//	@Description	Check API and all adapter health status
 	//	@Tags			System
 	//	@Accept			json
 	//	@Produce		json
-	//	@Success		200	{object}	object{status=string,cache=string}
+	//	@Success		200	{object}	object{status=string,adapters=object}
 	//	@Failure		503	{object}	models.ErrorResponse
 	//	@Router			/health [get]
 	api.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		// Check Valkey health
-		if err := valkeyClient.Health(); err != nil {
-			http.Error(w, "Cache unavailable", http.StatusServiceUnavailable)
+		// Check all adapter health
+		if err := adapterSet.Health(); err != nil {
+			http.Error(w, "One or more adapters unavailable", http.StatusServiceUnavailable)
 			return
 		}
+		
+		// Create detailed health response
+		response := map[string]interface{}{
+			"status": "healthy",
+			"adapters": map[string]string{
+				"database": "connected",
+				"cache":    "connected",
+				"auth":     "connected",
+				"email":    "connected",
+				"storage":  "connected",
+			},
+			"timestamp": time.Now(),
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy","cache":"connected"}`))
+		json.NewEncoder(w).Encode(response)
 	}).Methods("GET")
 
 	// Public routes with lighter rate limiting and page caching
@@ -158,16 +201,57 @@ func main() {
 	protected.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// Get cache stats
-		cacheStats, err := valkeyClient.GetCacheStats()
+		// Get cache stats using adapter
+		cacheAdapter := serviceContainer.GetCacheAdapter()
+		cacheStats, err := cacheAdapter.GetStats()
 		if err != nil {
 			http.Error(w, "Failed to get cache stats", http.StatusInternalServerError)
 			return
 		}
 
+		// Get adapter health status
+		adapterHealth := make(map[string]string)
+		if err := serviceContainer.GetDatabaseAdapter().Health(); err != nil {
+			adapterHealth["database"] = "unhealthy"
+		} else {
+			adapterHealth["database"] = "healthy"
+		}
+		
+		if err := serviceContainer.GetCacheAdapter().Health(); err != nil {
+			adapterHealth["cache"] = "unhealthy"
+		} else {
+			adapterHealth["cache"] = "healthy"
+		}
+		
+		if err := serviceContainer.GetAuthAdapter().Health(); err != nil {
+			adapterHealth["auth"] = "unhealthy"
+		} else {
+			adapterHealth["auth"] = "healthy"
+		}
+		
+		if err := serviceContainer.GetEmailAdapter().Health(); err != nil {
+			adapterHealth["email"] = "unhealthy"
+		} else {
+			adapterHealth["email"] = "healthy"
+		}
+		
+		if err := serviceContainer.GetStorageAdapter().Health(); err != nil {
+			adapterHealth["storage"] = "unhealthy"
+		} else {
+			adapterHealth["storage"] = "healthy"
+		}
+
 		stats := map[string]interface{}{
-			"cache":     cacheStats,
-			"auth":      "JWT-based",
+			"cache":           cacheStats,
+			"auth":            "JWT-based",
+			"adapter_health":  adapterHealth,
+			"adapter_types": map[string]string{
+				"database": config.AppConfig.Adapters.Database.Type,
+				"cache":    config.AppConfig.Adapters.Cache.Type,
+				"auth":     config.AppConfig.Adapters.Auth.Type,
+				"email":    config.AppConfig.Adapters.Email.Type,
+				"storage":  config.AppConfig.Adapters.Storage.Type,
+			},
 			"timestamp": time.Now(),
 		}
 

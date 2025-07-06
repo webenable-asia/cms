@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	// Legacy configuration (kept for backward compatibility)
 	JWTSecret      []byte
 	DatabaseURL    string
 	ValkeyURL      string
@@ -18,12 +19,16 @@ type Config struct {
 	SMTPPass       string
 	SessionDomain  string
 	SessionSecure  bool
+	
+	// Adapter configuration
+	Adapters *AdapterConfig
 }
 
 var AppConfig *Config
 
 func Init() {
 	AppConfig = &Config{
+		// Legacy configuration
 		JWTSecret:      getRequiredEnvBytes("JWT_SECRET"),
 		DatabaseURL:    getEnvOrDefault("COUCHDB_URL", "http://admin:password@localhost:5984/"),
 		ValkeyURL:      getEnvOrDefault("VALKEY_URL", "valkey://valkeypassword@localhost:6379"),
@@ -35,6 +40,9 @@ func Init() {
 		SMTPPass:       os.Getenv("SMTP_PASS"),
 		SessionDomain:  getEnvOrDefault("SESSION_DOMAIN", ""),
 		SessionSecure:  getEnvOrDefault("SESSION_SECURE", "false") == "true",
+		
+		// Initialize adapter configuration
+		Adapters: InitAdapterConfig(),
 	}
 }
 
