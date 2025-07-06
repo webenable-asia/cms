@@ -23,7 +23,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -33,10 +32,12 @@ import (
 	_ "webenable-cms-backend/docs"
 	"webenable-cms-backend/handlers"
 	"webenable-cms-backend/middleware"
+	"webenable-cms-backend/utils"
 
 	_ "github.com/go-kivik/kivik/v4/couchdb"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/sirupsen/logrus"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -50,7 +51,10 @@ func main() {
 	// Initialize Valkey cache
 	valkeyClient, err := cache.NewValkeyClient(config.AppConfig.ValkeyURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to Valkey: %v", err)
+		utils.LogError(err, "Failed to connect to Valkey", logrus.Fields{
+			"valkey_url": config.AppConfig.ValkeyURL,
+		})
+		panic(err)
 	}
 	defer valkeyClient.Close()
 
@@ -66,6 +70,15 @@ func main() {
 
 	// Initialize router
 	r := mux.NewRouter()
+
+	// Add security headers middleware (first)
+	r.Use(middleware.SecurityHeaders)
+
+	// Add XSS protection middleware
+	r.Use(middleware.XSSProtection)
+
+	// Add compression middleware
+	r.Use(middleware.CompressionMiddleware)
 
 	// Add global rate limiting
 	r.Use(rateLimiter.RateLimit(100)) // 100 requests per minute per IP
@@ -171,8 +184,17 @@ func main() {
 
 	handler := c.Handler(r)
 
-	log.Printf("Server starting on port %s", config.AppConfig.Port)
-	log.Printf("Valkey cache connected at %s", config.AppConfig.ValkeyURL)
-	log.Printf("Authentication mode: JWT-based (cookieless)")
-	log.Fatal(http.ListenAndServe(":"+config.AppConfig.Port, handler))
+	utils.LogInfo("Server starting", logrus.Fields{
+		"port":            config.AppConfig.Port,
+		"valkey_url":      config.AppConfig.ValkeyURL,
+		"auth_mode":       "JWT-based (cookieless)",
+		"allowed_origins": config.AppConfig.AllowedOrigins,
+	})
+
+	if err := http.ListenAndServe(":"+config.AppConfig.Port, handler); err != nil {
+		utils.LogError(err, "Server failed to start", logrus.Fields{
+			"port": config.AppConfig.Port,
+		})
+		panic(err)
+	}
 }

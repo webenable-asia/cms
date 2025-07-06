@@ -9,13 +9,6 @@ import (
 	"webenable-cms-backend/models"
 )
 
-var globalRateLimiter *middleware.RateLimiter
-
-// SetGlobalRateLimiter sets the global rate limiter for handlers
-func SetGlobalRateLimiter(rateLimiter *middleware.RateLimiter) {
-	globalRateLimiter = rateLimiter
-}
-
 // ResetRateLimit godoc
 //
 //	@Summary		Reset rate limit

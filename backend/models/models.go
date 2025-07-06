@@ -99,6 +99,28 @@ type UserStatsResponse struct {
 	ActiveUsers int `json:"active_users"`
 }
 
+// PaginationMeta represents pagination metadata
+type PaginationMeta struct {
+	Page       int  `json:"page"`
+	Limit      int  `json:"limit"`
+	Total      int  `json:"total"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
+	HasPrev    bool `json:"has_prev"`
+}
+
+// PaginatedPostsResponse represents paginated posts response
+type PaginatedPostsResponse struct {
+	Data []Post         `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
+// PaginatedUsersResponse represents paginated users response
+type PaginatedUsersResponse struct {
+	Data []User         `json:"data"`
+	Meta PaginationMeta `json:"meta"`
+}
+
 func (u *User) SetPassword(password string) error {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"time"
 
@@ -15,18 +16,20 @@ import (
 // GetUsers godoc
 //
 //	@Summary		Get all users
-//	@Description	Get all users (admin only)
+//	@Description	Get all users with pagination (admin only)
 //	@Tags			Users
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{array}		models.User
-//	@Failure		401	{object}	models.ErrorResponse
-//	@Failure		403	{object}	models.ErrorResponse
-//	@Failure		500	{object}	models.ErrorResponse
+//	@Param			page	query		int	false	"Page number (default: 1)"
+//	@Param			limit	query		int	false	"Items per page (default: 10, max: 100)"
+//	@Success		200		{object}	models.PaginatedUsersResponse
+//	@Failure		401		{object}	models.ErrorResponse
+//	@Failure		403		{object}	models.ErrorResponse
+//	@Failure		500		{object}	models.ErrorResponse
 //	@Router			/users [get]
 //
-// GetUsers returns all users (admin only)
+// GetUsers returns all users with pagination (admin only)
 func GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -43,13 +46,46 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get pagination parameters
+	page, limit := getPaginationParams(r)
+
 	users, err := database.GetAllUsers()
 	if err != nil {
 		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(users)
+	// Calculate pagination
+	total := len(users)
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+	offset := (page - 1) * limit
+
+	// Get the slice for current page
+	var paginatedUsers []models.User
+	if offset < total {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		paginatedUsers = users[offset:end]
+	}
+
+	// Create pagination metadata
+	meta := models.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+		HasPrev:    page > 1,
+	}
+
+	response := models.PaginatedUsersResponse{
+		Data: paginatedUsers,
+		Meta: meta,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetUser godoc

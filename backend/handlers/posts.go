@@ -4,54 +4,54 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
-	"webenable-cms-backend/cache"
 	"webenable-cms-backend/database"
 	"webenable-cms-backend/models"
+	"webenable-cms-backend/utils"
 
 	"github.com/go-kivik/kivik/v4"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
-
-var globalCache *cache.ValkeyClient
-
-// SetGlobalCache sets the global cache client for handlers
-func SetGlobalCache(valkeyClient *cache.ValkeyClient) {
-	globalCache = valkeyClient
-}
 
 // GetPosts godoc
 //
 //	@Summary		Get all posts
-//	@Description	Get all published posts with optional status filter
+//	@Description	Get all published posts with optional status filter and pagination
 //	@Tags			Posts
 //	@Accept			json
 //	@Produce		json
 //	@Param			status	query		string	false	"Filter by post status (published, draft, scheduled)"
-//	@Success		200		{array}		models.Post
+//	@Param			page	query		int		false	"Page number (default: 1)"
+//	@Param			limit	query		int		false	"Items per page (default: 10, max: 100)"
+//	@Success		200		{object}	models.PaginatedPostsResponse
 //	@Failure		500		{object}	models.ErrorResponse
 //	@Router			/posts [get]
 func GetPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	// Get pagination parameters
+	page, limit := getPaginationParams(r)
+
 	// Get status filter from query parameters
 	statusFilter := r.URL.Query().Get("status")
 
 	// Create cache key based on query parameters
-	cacheKey := "posts_list"
+	cacheKey := fmt.Sprintf("posts_list_page_%d_limit_%d", page, limit)
 	if statusFilter != "" {
-		cacheKey = fmt.Sprintf("posts_list_status_%s", statusFilter)
+		cacheKey = fmt.Sprintf("posts_list_status_%s_page_%d_limit_%d", statusFilter, page, limit)
 	}
 
 	// Try to get from cache first
 	if globalCache != nil {
-		var cachedPosts []models.Post
-		err := globalCache.GetCachedPostsList(cacheKey, &cachedPosts)
+		var cachedResponse models.PaginatedPostsResponse
+		err := globalCache.GetCachedPostsList(cacheKey, &cachedResponse)
 		if err == nil {
 			w.Header().Set("X-Cache", "HIT")
-			json.NewEncoder(w).Encode(cachedPosts)
+			json.NewEncoder(w).Encode(cachedResponse)
 			return
 		}
 	}
@@ -60,7 +60,7 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 	rows := database.Instance.PostsDB.AllDocs(ctx, kivik.Param("include_docs", true))
 	defer rows.Close()
 
-	var posts []models.Post
+	var allPosts []models.Post
 	for rows.Next() {
 		var post models.Post
 		if err := rows.ScanDoc(&post); err != nil {
@@ -80,21 +80,53 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		posts = append(posts, post)
+		allPosts = append(allPosts, post)
+	}
+
+	// Calculate pagination
+	total := len(allPosts)
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+	offset := (page - 1) * limit
+
+	// Get the slice for current page
+	var posts []models.Post
+	if offset < total {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		posts = allPosts[offset:end]
+	}
+
+	// Create pagination metadata
+	meta := models.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+		HasPrev:    page > 1,
+	}
+
+	response := models.PaginatedPostsResponse{
+		Data: posts,
+		Meta: meta,
 	}
 
 	// Cache the result for 10 minutes
 	if globalCache != nil {
 		go func() {
-			err := globalCache.CachePostsList(cacheKey, posts, 10*time.Minute)
+			err := globalCache.CachePostsList(cacheKey, response, 10*time.Minute)
 			if err != nil {
-				fmt.Printf("Failed to cache posts list: %v\n", err)
+				utils.LogError(err, "Failed to cache posts list", logrus.Fields{
+					"cache_key": cacheKey,
+				})
 			}
 		}()
 	}
 
 	w.Header().Set("X-Cache", "MISS")
-	json.NewEncoder(w).Encode(posts)
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetPost godoc
@@ -146,7 +178,9 @@ func GetPost(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			err := globalCache.CachePost(id, post, 30*time.Minute)
 			if err != nil {
-				fmt.Printf("Failed to cache post %s: %v\n", id, err)
+				utils.LogError(err, "Failed to cache post", logrus.Fields{
+					"post_id": id,
+				})
 			}
 		}()
 	}

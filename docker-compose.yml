@@ -6,8 +6,8 @@ services:
     ports:
       - "5984:5984"
     environment:
-      COUCHDB_USER: admin
-      COUCHDB_PASSWORD: password
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
     volumes:
       - couchdb_data:/opt/couchdb/data
 
@@ -16,11 +16,11 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    command: valkey-server --requirepass valkeypassword --appendonly yes
+    command: valkey-server --requirepass ${VALKEY_PASSWORD} --appendonly yes
     volumes:
       - valkey_data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "-a", "valkeypassword", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -35,14 +35,11 @@ services:
     depends_on:
       - db
       - cache
+    env_file:
+      - .env.development
     environment:
-      - COUCHDB_URL=http://admin:password@db:5984/
-      - VALKEY_URL=redis://:valkeypassword@cache:6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-      - SESSION_DOMAIN=localhost
-      - SESSION_SECURE=false
-      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
-      - ADMIN_PASSWORD=admin123
+      - COUCHDB_URL=http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@db:5984/
+      - VALKEY_URL=redis://:${VALKEY_PASSWORD}@cache:6379
 
   frontend:
     build: 
