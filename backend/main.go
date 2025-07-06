@@ -120,7 +120,7 @@ func main() {
 
 	// Authentication routes with strict rate limiting
 	auth := api.PathPrefix("/auth").Subrouter()
-	auth.Use(rateLimiter.AuthRateLimit(15)) // 15 attempts per hour for auth
+	auth.Use(rateLimiter.AuthRateLimit(100)) // 100 attempts per hour for auth (development)
 	auth.HandleFunc("/login", handlers.Login).Methods("POST")
 	auth.HandleFunc("/logout", handlers.Logout).Methods("POST")
 

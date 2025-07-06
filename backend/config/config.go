@@ -28,7 +28,7 @@ func Init() {
 		DatabaseURL:    getEnvOrDefault("COUCHDB_URL", "http://admin:password@localhost:5984/"),
 		ValkeyURL:      getEnvOrDefault("VALKEY_URL", "valkey://valkeypassword@localhost:6379"),
 		Port:           getEnvOrDefault("PORT", "8080"),
-		AllowedOrigins: strings.Split(getEnvOrDefault("ALLOWED_ORIGINS", "http://localhost:3000"), ","),
+		AllowedOrigins: strings.Split(getEnvOrDefault("CORS_ORIGINS", "http://localhost:3000"), ","),
 		SMTPHost:       getEnvOrDefault("SMTP_HOST", "localhost"),
 		SMTPPort:       getEnvOrDefault("SMTP_PORT", "1025"),
 		SMTPUser:       getEnvOrDefault("SMTP_USER", "hello@webenable.asia"),

@@ -1,6 +1,6 @@
 import { Post, Category, Contact, User, LoginRequest } from '@/types/api'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -79,14 +79,14 @@ export const postsApi = {
   // Get all posts with optional status filter
   getAll: async (status?: string): Promise<Post[]> => {
     const query = status ? `?status=${status}` : ''
-    const result = await apiRequest<Post[] | null>(`/posts${query}`)
-    return result || []
+    const result = await apiRequest<{ data: Post[]; meta: any }>(`/posts${query}`)
+    return result?.data || []
   },
 
   // Get published posts only (for public blog)
   getPublished: async (): Promise<Post[]> => {
-    const result = await apiRequest<Post[] | null>('/posts?status=published')
-    return result || []
+    const result = await apiRequest<{ data: Post[]; meta: any }>('/posts?status=published')
+    return result?.data || []
   },
 
   // Get single post by ID
@@ -130,8 +130,8 @@ export const contactApi = {
 
   // Get all contacts (requires auth)
   getAll: async (): Promise<Contact[]> => {
-    const result = await apiRequest<Contact[] | null>('/contacts')
-    return result || []
+    const result = await apiRequest<{ data: Contact[]; meta: any }>('/contacts')
+    return result?.data || []
   },
 
   // Get single contact (requires auth)
@@ -202,8 +202,8 @@ export const authApi = {
 export const usersApi = {
   // Get all users (admin only)
   getAll: async (): Promise<User[]> => {
-    const result = await apiRequest<User[] | null>('/users')
-    return result || []
+    const result = await apiRequest<{ data: User[]; meta: any }>('/users')
+    return result?.data || []
   },
 
   // Get single user by ID (admin only)

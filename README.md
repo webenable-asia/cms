@@ -42,6 +42,40 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 - Node.js 20+ (for local development)
 - Go 1.24+ (for local development - released February 2025)
 
+## Environment Setup
+
+**Before running the application, you need to configure your environment variables.**
+
+1. **Copy the example environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit the `.env` file with your configuration:**
+   ```bash
+   # Required: Change these for security
+   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+   COUCHDB_PASSWORD=your-secure-database-password
+   VALKEY_PASSWORD=your-secure-cache-password
+   
+   # Database URLs (update passwords to match above)
+   COUCHDB_URL=http://admin:your-secure-database-password@db:5984/
+   VALKEY_URL=redis://:your-secure-cache-password@cache:6379
+   
+   # Optional: Customize other settings
+   SESSION_DOMAIN=localhost
+   CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+   ```
+
+3. **Generate secure secrets (recommended for production):**
+   ```bash
+   # Generate a secure JWT secret
+   openssl rand -base64 32
+   
+   # Generate secure passwords
+   openssl rand -base64 16
+   ```
+
 ## Quick Start (Docker - Recommended)
 
 **WebEnable CMS is designed to run with Docker Compose for the complete development experience.**
@@ -51,7 +85,9 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    cd /Users/tsaa/workspace/projects/webenable/cms
    ```
 
-2. **Start all services with our helper script:**
+2. **Set up environment variables (see Environment Setup above)**
+
+3. **Start all services with our helper script:**
    ```bash
    ./dev.sh start
    ```
@@ -61,13 +97,13 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    docker-compose up --build
    ```
 
-3. **Access the applications:**
+4. **Access the applications:**
    - **Frontend**: http://localhost:3000 (Next.js 15.3.5)
    - **Backend API**: http://localhost:8080 (Go 1.24)
-   - **CouchDB Admin**: http://localhost:5984/_utils (admin/password)
+   - **CouchDB Admin**: http://localhost:5984/_utils (admin/your-password)
    - **Valkey Cache**: localhost:6379
 
-4. **Initialize admin user (first time setup):**
+5. **Initialize admin user (first time setup):**
    ```bash
    cd backend
    make init-admin
