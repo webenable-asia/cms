@@ -68,7 +68,12 @@ func main() {
 	}
 
 	// Create service container
-	serviceContainer := container.NewContainer(adapterSet)
+	serviceContainer, err := container.NewContainer(config.AppConfig.Adapters)
+	if err != nil {
+		utils.LogError(err, "Failed to create service container", logrus.Fields{})
+		panic(err)
+	}
+	defer serviceContainer.Close()
 
 	// Initialize legacy Valkey client for backward compatibility
 	valkeyClient, err := cache.NewValkeyClient(config.AppConfig.ValkeyURL)
@@ -133,7 +138,7 @@ func main() {
 			http.Error(w, "One or more adapters unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		
+
 		// Create detailed health response
 		response := map[string]interface{}{
 			"status": "healthy",
@@ -146,7 +151,7 @@ func main() {
 			},
 			"timestamp": time.Now(),
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
@@ -202,7 +207,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Get cache stats using adapter
-		cacheAdapter := serviceContainer.GetCacheAdapter()
+		cacheAdapter := serviceContainer.Cache()
 		cacheStats, err := cacheAdapter.GetStats()
 		if err != nil {
 			http.Error(w, "Failed to get cache stats", http.StatusInternalServerError)
@@ -211,40 +216,40 @@ func main() {
 
 		// Get adapter health status
 		adapterHealth := make(map[string]string)
-		if err := serviceContainer.GetDatabaseAdapter().Health(); err != nil {
+		if err := serviceContainer.Database().Health(); err != nil {
 			adapterHealth["database"] = "unhealthy"
 		} else {
 			adapterHealth["database"] = "healthy"
 		}
-		
-		if err := serviceContainer.GetCacheAdapter().Health(); err != nil {
+
+		if err := serviceContainer.Cache().Health(); err != nil {
 			adapterHealth["cache"] = "unhealthy"
 		} else {
 			adapterHealth["cache"] = "healthy"
 		}
-		
-		if err := serviceContainer.GetAuthAdapter().Health(); err != nil {
+
+		if err := serviceContainer.Auth().Health(); err != nil {
 			adapterHealth["auth"] = "unhealthy"
 		} else {
 			adapterHealth["auth"] = "healthy"
 		}
-		
-		if err := serviceContainer.GetEmailAdapter().Health(); err != nil {
+
+		if err := serviceContainer.Email().Health(); err != nil {
 			adapterHealth["email"] = "unhealthy"
 		} else {
 			adapterHealth["email"] = "healthy"
 		}
-		
-		if err := serviceContainer.GetStorageAdapter().Health(); err != nil {
+
+		if err := serviceContainer.Storage().Health(); err != nil {
 			adapterHealth["storage"] = "unhealthy"
 		} else {
 			adapterHealth["storage"] = "healthy"
 		}
 
 		stats := map[string]interface{}{
-			"cache":           cacheStats,
-			"auth":            "JWT-based",
-			"adapter_health":  adapterHealth,
+			"cache":          cacheStats,
+			"auth":           "JWT-based",
+			"adapter_health": adapterHealth,
 			"adapter_types": map[string]string{
 				"database": config.AppConfig.Adapters.Database.Type,
 				"cache":    config.AppConfig.Adapters.Cache.Type,

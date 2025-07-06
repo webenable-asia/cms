@@ -105,10 +105,11 @@ func (s *SMTPAdapter) SendEmail(message EmailMessage) error {
 	}
 
 	// Add attachments
-	for range message.Attachments {
+	for _, attachment := range message.Attachments {
 		// Note: gomail doesn't directly support io.Reader attachments
 		// In a production system, you'd need to handle this differently
 		// For now, we'll skip attachments or require file paths
+		_ = attachment // Explicitly ignore the attachment for now
 	}
 
 	// Send email

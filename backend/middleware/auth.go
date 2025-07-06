@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"webenable-cms-backend/adapters/auth"
 	"webenable-cms-backend/config"
 	"webenable-cms-backend/container"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
@@ -44,7 +45,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		// Use auth adapter if available, otherwise fall back to direct JWT
 		if globalServiceContainer != nil {
-			authAdapter := globalServiceContainer.GetAuthAdapter()
+			authAdapter := globalServiceContainer.Auth()
 			claims, err := authAdapter.ValidateToken(tokenString)
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
