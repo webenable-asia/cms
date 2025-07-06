@@ -159,6 +159,51 @@ func (rl *RateLimiter) ClearRateLimit(identifier string) error {
 	return rl.cache.Delete(identifier)
 }
 
+// ResetRateLimitForIP resets rate limit for a specific IP address
+func (rl *RateLimiter) ResetRateLimitForIP(ipAddress string) error {
+	// Reset API rate limit
+	apiKey := fmt.Sprintf("rate_limit:api:%s", ipAddress)
+	err := rl.cache.Delete(apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to reset API rate limit for IP %s: %w", ipAddress, err)
+	}
+
+	// Reset auth rate limit
+	authKey := fmt.Sprintf("rate_limit:auth:%s", ipAddress)
+	err = rl.cache.Delete(authKey)
+	if err != nil {
+		return fmt.Errorf("failed to reset auth rate limit for IP %s: %w", ipAddress, err)
+	}
+
+	return nil
+}
+
+// ResetRateLimitForUser resets rate limit for a specific user
+func (rl *RateLimiter) ResetRateLimitForUser(userID string) error {
+	userKey := fmt.Sprintf("rate_limit:user:%s", userID)
+	return rl.cache.Delete(userKey)
+}
+
+// ResetAllAPIRateLimits resets all API rate limits
+func (rl *RateLimiter) ResetAllAPIRateLimits() error {
+	return rl.cache.ResetRateLimitByPattern("api:*")
+}
+
+// ResetAllAuthRateLimits resets all authentication rate limits
+func (rl *RateLimiter) ResetAllAuthRateLimits() error {
+	return rl.cache.ResetRateLimitByPattern("auth:*")
+}
+
+// ResetAllUserRateLimits resets all user-specific rate limits
+func (rl *RateLimiter) ResetAllUserRateLimits() error {
+	return rl.cache.ResetRateLimitByPattern("user:*")
+}
+
+// ResetAllRateLimits resets all rate limits
+func (rl *RateLimiter) ResetAllRateLimits() error {
+	return rl.cache.ResetAllRateLimits()
+}
+
 // GetRateLimitStatus returns the current rate limit status
 func (rl *RateLimiter) GetRateLimitStatus(identifier string, limit int) (current int, remaining int, resetTime time.Time, err error) {
 	current, err = rl.getCurrentCount(identifier)
