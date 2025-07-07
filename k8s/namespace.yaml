@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cms
+  labels:
+    name: cms
+    environment: production
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-config
+  namespace: cms
+data:
+  # Database configuration
+  COUCHDB_USER: "admin"
+  GIN_MODE: "release"
+  NODE_ENV: "production"
+  
+  # Internal service URLs
+  COUCHDB_URL: "http://admin:$(COUCHDB_PASSWORD)@couchdb-service:5984/"
+  VALKEY_URL: "redis://:$(VALKEY_PASSWORD)@valkey-service:6379"
+  BACKEND_URL: "http://backend-service:8080"
+  
+  # Frontend configuration
+  NEXT_PUBLIC_API_URL: "https://yourdomain.com/api"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cms-secrets
+  namespace: cms
+type: Opaque
+data:
+  # Base64 encoded secrets - replace with your actual values
+  # echo -n "your_password" | base64
+  COUCHDB_PASSWORD: "eW91cl9zZWN1cmVfcGFzc3dvcmRfaGVyZQ=="  # your_secure_password_here
+  VALKEY_PASSWORD: "eW91cl9jYWNoZV9wYXNzd29yZF9oZXJl"        # your_cache_password_here
+  JWT_SECRET: "eW91cl9qd3Rfc2VjcmV0X2hlcmU="                  # your_jwt_secret_here
+  ENCRYPTION_KEY: "eW91cl8zMl9jaGFyYWN0ZXJfZW5jcnlwdGlvbl9rZXk="  # your_32_character_encryption_key

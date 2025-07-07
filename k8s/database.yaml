@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: couchdb
+  namespace: cms
+  labels:
+    app: couchdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: couchdb
+  template:
+    metadata:
+      labels:
+        app: couchdb
+    spec:
+      containers:
+      - name: couchdb
+        image: couchdb:3
+        ports:
+        - containerPort: 5984
+        env:
+        - name: COUCHDB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: cms-config
+              key: COUCHDB_USER
+        - name: COUCHDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cms-secrets
+              key: COUCHDB_PASSWORD
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 500m
+            memory: 256Mi
+        volumeMounts:
+        - name: couchdb-storage
+          mountPath: /opt/couchdb/data
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5984
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5984
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: couchdb-storage
+        persistentVolumeClaim:
+          claimName: couchdb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: couchdb-service
+  namespace: cms
+  labels:
+    app: couchdb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5984
+    targetPort: 5984
+    protocol: TCP
+  selector:
+    app: couchdb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: couchdb-pvc
+  namespace: cms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: local-path  # K3s default storage class
