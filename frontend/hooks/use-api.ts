@@ -66,15 +66,15 @@ export function usePosts(status?: string) {
 }
 
 export function usePost(id: string) {
-  const result = useApiCall(
-    () => id ? postsApi.getById(id) : Promise.resolve(null),
-    [id]
-  )
-  
   // Skip the API call entirely if no ID is provided
   if (!id) {
     return { data: null, loading: false, error: null, refetch: () => {} }
   }
+  
+  const result = useApiCall(
+    () => postsApi.getById(id),
+    [id]
+  )
   
   return result
 }

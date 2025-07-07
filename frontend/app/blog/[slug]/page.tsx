@@ -1,54 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { notFound, useRouter } from "next/navigation"
+import { use } from "react"
+import { notFound } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, Clock, ArrowLeft, Share2, BookmarkPlus } from "lucide-react"
+import { CalendarDays, Clock, ArrowLeft, Share2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { usePost } from "@/hooks/use-api"
+import { usePost, useBlogPosts } from "@/hooks/use-api"
 import { formatDate, getRelatedPosts } from "@/lib/blog-utils"
-import { useBlogPosts } from "@/hooks/use-api"
+import { MarkdownContent } from "@/components/markdown-content"
 
 interface BlogPostPageProps {
-  params: {
-    slug: string
-  } | Promise<{
+  params: Promise<{
     slug: string
   }>
 }
 
 export default function BlogPostPage({ params }: BlogPostPageProps) {
-  // Handle both sync and async params
-  const [slug, setSlug] = useState<string>('')
+  const { slug } = use(params)
   
-  useEffect(() => {
-    const resolveParams = async () => {
-      const resolvedParams = await Promise.resolve(params)
-      setSlug(resolvedParams?.slug || '')
-    }
-    resolveParams()
-  }, [params])
-  
-  // Always call hooks in the same order - use empty string when slug is not ready
+  // Always call hooks in the same order
   const { data: post, loading, error } = usePost(slug)
   const { data: allPosts } = useBlogPosts()
-  
-  // Early return if no slug is provided (after all hooks are called)
-  if (!slug) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-300 rounded mb-8 w-32"></div>
-            <div className="h-12 bg-gray-300 rounded mb-4"></div>
-            <div className="h-6 bg-gray-300 rounded mb-8 w-3/4"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (
@@ -100,9 +74,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         console.log('Error sharing:', err)
       }
     } else {
-      // Fallback to copying URL to clipboard
       navigator.clipboard.writeText(window.location.href)
-      // You could show a toast notification here
     }
   }
 
@@ -117,18 +89,6 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         </Link>
 
         <article>
-          {/* Featured Image */}
-          {post.featured_image && (
-            <div className="aspect-video overflow-hidden rounded-lg mb-8">
-              <img
-                src={post.featured_image}
-                alt={post.image_alt || post.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-
-          {/* Header */}
           <header className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
@@ -166,13 +126,11 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             </div>
           </header>
 
-          {/* Content */}
-          <div className="prose prose-lg max-w-none mb-12">
-            {/* For now, render as plain text. In production, you'd want to use a markdown renderer */}
-            <div style={{ whiteSpace: 'pre-wrap' }}>{post.content}</div>
-          </div>
+          <MarkdownContent 
+            content={post.content} 
+            className="mb-12"
+          />
 
-          {/* Tags */}
           {post.tags && post.tags.length > 0 && (
             <div className="mb-8">
               <h3 className="text-lg font-semibold mb-3">Tags</h3>
@@ -185,65 +143,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
               </div>
             </div>
           )}
-
-          {/* Meta Information */}
-          {(post.meta_title || post.meta_description) && (
-            <div className="border-t pt-8 mb-8">
-              <h3 className="text-lg font-semibold mb-3">SEO Information</h3>
-              {post.meta_title && (
-                <div className="mb-2">
-                  <strong>Meta Title:</strong> {post.meta_title}
-                </div>
-              )}
-              {post.meta_description && (
-                <div>
-                  <strong>Meta Description:</strong> {post.meta_description}
-                </div>
-              )}
-            </div>
-          )}
         </article>
-
-        {/* Related Posts */}
-        {relatedPosts.length > 0 && (
-          <section className="border-t pt-12">
-            <h2 className="text-2xl font-bold mb-6">Related Posts</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {relatedPosts.map((relatedPost) => (
-                <Card key={relatedPost.id} className="hover:shadow-lg transition-shadow">
-                  {relatedPost.featuredImage && (
-                    <div className="aspect-video overflow-hidden rounded-t-lg">
-                      <img
-                        src={relatedPost.featuredImage}
-                        alt={relatedPost.imageAlt || relatedPost.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader>
-                    <Badge variant="secondary" className="w-fit mb-2">
-                      {relatedPost.category}
-                    </Badge>
-                    <CardTitle className="line-clamp-2">
-                      <Link href={`/blog/${relatedPost.id}`} className="hover:text-primary">
-                        {relatedPost.title}
-                      </Link>
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {relatedPost.excerpt}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <CalendarDays className="w-4 h-4 mr-1" />
-                      {formatDate(relatedPost.publishedAt)}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </div>
   )

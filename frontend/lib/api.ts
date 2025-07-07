@@ -64,7 +64,8 @@ async function apiRequest<T>(
     if (response.status === 401) {
       tokenManager.removeToken()
     }
-    throw new ApiError(response.status, await response.text())
+    const errorText = await response.text()
+    throw new ApiError(response.status, errorText)
   }
 
   if (response.status === 204) {
