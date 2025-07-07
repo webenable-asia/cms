@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { notFound, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, ArrowLeft, Share2, BookmarkPlus } from "lucide-react"
@@ -13,12 +14,41 @@ import { useBlogPosts } from "@/hooks/use-api"
 interface BlogPostPageProps {
   params: {
     slug: string
-  }
+  } | Promise<{
+    slug: string
+  }>
 }
 
 export default function BlogPostPage({ params }: BlogPostPageProps) {
-  const { data: post, loading, error } = usePost(params.slug)
+  // Handle both sync and async params
+  const [slug, setSlug] = useState<string>('')
+  
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await Promise.resolve(params)
+      setSlug(resolvedParams?.slug || '')
+    }
+    resolveParams()
+  }, [params])
+  
+  // Always call hooks in the same order - use empty string when slug is not ready
+  const { data: post, loading, error } = usePost(slug)
   const { data: allPosts } = useBlogPosts()
+  
+  // Early return if no slug is provided (after all hooks are called)
+  if (!slug) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-300 rounded mb-8 w-32"></div>
+            <div className="h-12 bg-gray-300 rounded mb-4"></div>
+            <div className="h-6 bg-gray-300 rounded mb-8 w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -53,7 +83,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     tags: post.tags || [],
     publishedAt: post.published_at || post.created_at,
     readTime: post.reading_time ? `${post.reading_time} min read` : '5 min read',
-    slug: params.slug,
+    slug: slug,
     featuredImage: post.featured_image,
     imageAlt: post.image_alt,
   }) : []
