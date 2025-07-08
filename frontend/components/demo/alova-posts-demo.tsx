@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { alovaPostsApi } from '@/lib/api/alova-posts'
+import { postsApi } from '@/lib/api/posts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,10 +27,10 @@ export function AlovaPostsDemo() {
       setError(null)
       
       // Use Alova to fetch posts
-      const response = await alovaPostsApi.getAll().send()
+      const response = await postsApi.getAll().send()
       
       // Handle the response based on your API structure
-      const postsData = response?.data || response || []
+      const postsData = (response as any)?.data || response || []
       setPosts(Array.isArray(postsData) ? postsData : [])
     } catch (err) {
       console.error('Error fetching posts:', err)

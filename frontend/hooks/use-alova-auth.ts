@@ -1,7 +1,7 @@
-import { useRequest, useWatcher } from 'alova/react';
-import { authApi } from '../api/auth';
-import type { User, LoginRequest } from '../types';
-import { authApi as originalAuthApi, tokenManager } from './api';
+import { useRequest } from 'alova/client';
+import ReactHook from 'alova/react';
+import { authApi } from '../lib/api/auth';
+import type { User, LoginRequest } from '../lib/types';
 
 // Hook for authentication state management using Alova
 export function useAlovaAuth() {
@@ -65,9 +65,9 @@ export function useAlovaAuth() {
   };
 }
 
-// Backward compatibility hook that maintains the old interface
-export function useAuth() {
-  // For now, return the original auth implementation
-  // We'll gradually migrate to Alova
-  return originalAuthApi;
+/**
+ * Returns the authentication API instance
+ */
+export function useAuthApi() {
+  return authApi;
 }
