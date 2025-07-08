@@ -1,6 +1,15 @@
 import { Post, Category, Contact, User, LoginRequest } from '@/types/api'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+// Use different API URLs for server-side vs client-side requests
+const getApiBaseUrl = () => {
+  // Check if we're on the server (Node.js environment)
+  if (typeof window === 'undefined') {
+    // Server-side: use internal Docker network URL
+    return process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : 'http://backend:8080/api'
+  }
+  // Client-side: use public URL that browser can access
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+}
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -40,7 +49,7 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`
+  const url = `${getApiBaseUrl()}${endpoint}`
   
   // Get auth token for protected requests
   const token = tokenManager.getToken()

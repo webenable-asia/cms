@@ -15,6 +15,12 @@ function useApiCall<T>(
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Only run API calls in the browser, not during SSR
+    if (typeof window === 'undefined') {
+      setLoading(false)
+      return
+    }
+
     let mounted = true
 
     const fetchData = async () => {

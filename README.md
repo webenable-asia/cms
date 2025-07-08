@@ -13,6 +13,7 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 - **Responsive Design**: Mobile-friendly interface with Tailwind CSS
 - **Theme Toggle**: Light/Dark/System theme support with animated transitions
 - **UI Components**: Radix UI components with shadcn/ui design system
+- **Production Ready**: Caddy reverse proxy with automatic HTTPS and optimized performance
 
 ### 🔒 **Security Features**
 - **Environment-based Configuration**: No hardcoded secrets, secure credential management
@@ -28,13 +29,14 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 - **Multi-level Caching**: Page, post, and list caching with TTL and invalidation
 - **Cache Warming**: Proactive cache population for better performance
 - **Optimized Queries**: Selective field loading and efficient database operations
+- **Resource Limits**: Production container resource management and monitoring
 
 ### 🧪 **Developer Experience**
 - **Comprehensive Testing**: Unit tests for authentication and security middleware
 - **Structured Logging**: JSON logging with contextual information using logrus
 - **Standardized Errors**: Consistent error responses with error codes
-- **Development Tools**: Makefile with test, build, and development commands
-- **Docker Support**: Containerized development environment with hot reload
+- **Management Tools**: Production management script with monitoring commands
+- **Docker Support**: Containerized production environment with health checks
 
 ## Prerequisites
 
@@ -58,13 +60,15 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    COUCHDB_PASSWORD=your-secure-database-password
    VALKEY_PASSWORD=your-secure-cache-password
    
-   # Database URLs (update passwords to match above)
-   COUCHDB_URL=http://admin:your-secure-database-password@db:5984/
-   VALKEY_URL=redis://:your-secure-cache-password@cache:6379
+   # Frontend Configuration
+   NEXT_PUBLIC_API_URL=http://localhost/api
+   BACKEND_URL=http://backend:8080
+   NODE_ENV=production
    
    # Optional: Customize other settings
    SESSION_DOMAIN=localhost
-   CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+   SESSION_SECURE=true
+   CORS_ORIGINS=http://localhost:3000,http://frontend:3000,https://localhost
    ```
 
 3. **Generate secure secrets (recommended for production):**
@@ -78,7 +82,7 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 ## Quick Start (Docker - Recommended)
 
-**WebEnable CMS is designed to run with Docker Compose for the complete development experience.**
+**WebEnable CMS is designed to run with Docker Compose for the complete production experience.**
 
 1. **Clone and navigate to the project:**
    ```bash
@@ -87,9 +91,9 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 2. **Set up environment variables (see Environment Setup above)**
 
-3. **Start all services with our helper script:**
+3. **Start all services with our management script:**
    ```bash
-   ./dev.sh start
+   ./manage.sh start
    ```
    
    Or manually with Docker Compose:
@@ -97,11 +101,10 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    docker-compose up --build
    ```
 
-4. **Access the applications:**
-   - **Frontend**: http://localhost:3000 (Next.js 15.3.5)
-   - **Backend API**: http://localhost:8080 (Go 1.24)
-   - **CouchDB Admin**: http://localhost:5984/_utils (admin/your-password)
-   - **Valkey Cache**: localhost:6379
+4. **Access the application:**
+   - **Frontend**: http://localhost (via Caddy reverse proxy)
+   - **Backend API**: http://localhost/api (via Caddy reverse proxy)
+   - **Database**: http://localhost:5984 (via Caddy database proxy)
 
 5. **Initialize admin user (first time setup):**
    ```bash
@@ -115,62 +118,67 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 ## 📚 Documentation
 
+- **[Production Deployment Guide](PRODUCTION_DEPLOYMENT.md)** - Complete production deployment checklist and guide
 - **[Docker Development Guide](DOCKER.md)** - Complete Docker setup and workflow
 - **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details  
 - **[Backend README](backend/README.md)** - Go 1.24 backend documentation
-- **[Security Implementation](SECURITY_IMPLEMENTATION_COMPLETE.md)** - Security features and setup
-- **[Code Review Analysis](CODEREVIEW.md)** - Comprehensive codebase analysis and improvements
+- **[Security Checklist](SECURITY_CHECKLIST.md)** - Security features and implementation checklist
+- **[Reverse Proxy Guide](docs/REVERSE_PROXY.md)** - Caddy reverse proxy architecture and configuration
 - **[API Documentation](http://localhost:8080/swagger/)** - Interactive Swagger API docs (when running)
 
-## Development Helper Script
+## Management Helper Script
 
-Use the included `dev.sh` script for easier development:
+Use the included `manage.sh` script for easier production management:
 
 ```bash
-./dev.sh start     # Start all services
-./dev.sh stop      # Stop all services
-./dev.sh logs      # View logs
-./dev.sh build     # Rebuild services
-./dev.sh status    # Check service status
-./dev.sh frontend  # Open frontend in browser
-./dev.sh help      # Show all commands
+./manage.sh start     # Start all services
+./manage.sh stop      # Stop all services
+./manage.sh logs      # View logs
+./manage.sh build     # Rebuild services
+./manage.sh status    # Check service status
+./manage.sh open      # Open application in browser
+./manage.sh help      # Show all commands
 ```
 
 ## Docker Architecture
 
-WebEnable CMS uses a multi-container Docker setup for development:
+WebEnable CMS uses a multi-container Docker setup for production:
 
 ### Services
 
 | Service | Technology | Port | Purpose |
 |---------|------------|------|---------|
-| **frontend** | Next.js 15.3.5 | 3000 | React frontend with SSR |
-| **backend** | Go 1.24 | 8080 | RESTful API server |
-| **db** | CouchDB 3 | 5984 | Document database |
-| **cache** | Valkey (Redis) | 6379 | Session & cache storage |
+| **caddy** | Caddy 2 | 80/443/5984 | Reverse proxy & database proxy |
+| **frontend** | Next.js 15.3.5 | Internal | React frontend with SSR |
+| **backend** | Go 1.24 | Internal | RESTful API server |
+| **db** | CouchDB 3 | Internal | Document database |
+| **cache** | Valkey (Redis) | Internal | Session & cache storage |
 
 ### Container Features
 
-- **Hot Reload**: Frontend and backend support live reloading
-- **Volume Mounts**: Source code mounted for development
+- **Production Optimized**: Containerized builds with multi-stage Dockerfiles
+- **Resource Limits**: CPU and memory limits for stable operation
 - **Health Checks**: Automated service health monitoring
 - **Auto Restart**: Services restart automatically on failure
-- **Environment Variables**: Configurable through docker-compose.yml
+- **Security**: Non-root users and minimal attack surface
+- **Reverse Proxy**: Caddy handles automatic HTTPS and load balancing
 
 ### Network Communication
 
 ```
-Frontend (3000) ←→ Backend (8080) ←→ Database (5984)
-                         ↓
-                    Cache (6379)
+Client ←→ Caddy (80/443/5984) ←→ Frontend (3000) ←→ Backend (8080) ←→ Database (5984)
+                                     ↓
+                                Cache (6379)
 ```
 
-All services communicate through Docker's internal network, with only necessary ports exposed to the host.
+All services communicate through Docker's internal network with only Caddy exposed to the host.
 
 ## Project Structure
 
 ```
 ├── docker-compose.yml          # Docker Compose configuration
+├── caddy/                      # Caddy reverse proxy configuration
+│   └── Caddyfile              # Caddy configuration file
 ├── backend/                    # Go backend application
 │   ├── Dockerfile             # Backend Docker configuration
 │   ├── .air.toml              # Air live reload configuration

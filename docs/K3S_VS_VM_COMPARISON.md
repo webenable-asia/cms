@@ -11,7 +11,7 @@ Total Resources: 3.5 vCPU / 1.66GB RAM
 - Frontend: 0.5 CPU / 512M RAM  
 - Database: 1.0 CPU / 512M RAM
 - Cache: 0.5 CPU / 256M RAM
-- Nginx: 0.5 CPU / 128M RAM
+- Caddy: 0.5 CPU / 128M RAM
 ```
 
 ### K3s Deployment
@@ -52,7 +52,7 @@ K3s Overhead: 1-2 vCPU / 0.8-1.3GB RAM
 
 ### VM Architecture (Docker Compose)
 ```
-Internet → Nginx → Frontend/Backend → Database/Cache
+Internet → Caddy → Frontend/Backend → Database/Cache
 ```
 - **Pros**: Simple, direct, minimal overhead
 - **Cons**: Single point of failure, limited scaling
@@ -107,7 +107,7 @@ kubectl apply -f k8s/
 | **Monitoring** | Docker stats + custom | Prometheus + Grafana | K3s |
 | **Backup** | Manual scripts | Velero + automation | K3s |
 | **SSL/TLS** | Manual cert management | cert-manager automation | K3s |
-| **Load Balancing** | Single Nginx | Built-in service mesh | K3s |
+| **Load Balancing** | Single Caddy | Built-in service mesh | K3s |
 | **Health Checks** | Docker healthcheck | Kubernetes probes | K3s |
 | **Secret Management** | .env files | Kubernetes Secrets | K3s |
 

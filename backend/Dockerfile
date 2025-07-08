@@ -29,21 +29,28 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
-    -o main ./cmd/server/
+    -o main .
 
 # ===== Production Stage =====
-FROM scratch AS production
-WORKDIR /
+FROM alpine:3.22 AS production
+WORKDIR /app
 
-# Copy certificates and timezone data
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+# Install CA certificates and timezone data
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create a non-root user
+RUN addgroup -g 1000 appgroup && \
+    adduser -u 1000 -G appgroup -D appuser
+
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads && \
+    chown -R appuser:appgroup /app
 
 # Copy the binary
 COPY --from=builder /app/main .
 
 EXPOSE 8080
-USER 1000:1000
+USER appuser
 
 CMD ["./main"]
 

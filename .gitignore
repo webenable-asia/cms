@@ -68,7 +68,7 @@ docker-data/
 couchdb_data/
 
 # SSL certificates (if any)
-nginx/ssl/
+caddy/ssl/
 *.pem
 *.crt
 *.key

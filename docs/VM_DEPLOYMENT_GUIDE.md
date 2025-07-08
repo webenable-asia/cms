@@ -1,13 +1,13 @@
 # VM Deployment Guide
 
-This guide provides step-by-step instructions for deploying the CMS application on a VM instance in production.
+This guide provides step-by-step instructions for deploying the CMS application with Caddy reverse proxy on a VM instance in production.
 
 ## Prerequisites
 
 - VM instance with Docker and Docker Compose installed
 - Domain name configured (optional but recommended)
-- SSL certificates (for HTTPS)
 - Environment variables configured
+- **Note**: SSL certificates are automatically handled by Caddy when using a domain name
 
 ## VM Requirements
 
@@ -45,7 +45,7 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # Install additional tools
-sudo apt install git nginx-utils htop -y
+sudo apt install git htop -y
 ```
 
 ### 2. Application Deployment
@@ -58,14 +58,6 @@ cd cms-app
 # Create environment file
 cp .env.example .env.production
 nano .env.production
-
-# Create SSL directory
-mkdir -p nginx/ssl
-
-# Generate self-signed SSL (for testing)
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout nginx/ssl/privkey.pem \
-  -out nginx/ssl/fullchain.pem
 
 # Build and start services
 docker compose -f docker-compose.prod.yml up -d --build
@@ -98,29 +90,26 @@ SMTP_USER=noreply@yourdomain.com
 SMTP_PASS=your_smtp_password
 ```
 
-### 4. SSL Certificate Setup
+### 4. Domain Configuration (Optional but Recommended)
 
-For production, replace self-signed certificates with proper SSL certificates:
+**With a Domain Name**: Caddy automatically handles SSL certificates via Let's Encrypt when you have a domain:
 
+1. **Update Caddyfile for your domain:**
 ```bash
-# Using Let's Encrypt with Certbot
-sudo apt install certbot -y
+# Edit caddy/Caddyfile
+nano caddy/Caddyfile
 
-# Generate certificates
-sudo certbot certonly --standalone -d yourdomain.com
-
-# Copy certificates
-sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx/ssl/
-
-# Set permissions
-sudo chown -R $USER:$USER nginx/ssl/
-chmod 600 nginx/ssl/privkey.pem
-chmod 644 nginx/ssl/fullchain.pem
-
-# Restart nginx service
-docker compose -f docker-compose.prod.yml restart nginx
+# Replace 'localhost:80' with your domain:
+# yourdomain.com {
+#     # ... rest of configuration
+# }
 ```
+
+2. **Point your domain to the server's IP address** via DNS A record
+
+3. **Start the services** - Caddy will automatically request and manage SSL certificates
+
+**Without a Domain Name**: For local testing, you can use localhost or the server's IP address. HTTPS will not be available without a domain.
 
 ### 5. Firewall Configuration
 
@@ -131,9 +120,10 @@ sudo ufw enable
 # Allow SSH
 sudo ufw allow ssh
 
-# Allow HTTP and HTTPS
+# Allow HTTP, HTTPS, and Database proxy
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
+sudo ufw allow 5984/tcp
 
 # Check status
 sudo ufw status
@@ -281,7 +271,8 @@ Resource upgrade path:
 3. **SSL Certificate Issues**
    ```bash
    # Check certificate validity
-   openssl x509 -in nginx/ssl/fullchain.pem -text -noout
+   # Check Caddy logs for SSL issues
+   docker logs cms-caddy-1
    
    # Test SSL connection
    openssl s_client -connect yourdomain.com:443

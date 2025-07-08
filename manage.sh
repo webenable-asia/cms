@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# WebEnable CMS Development Helper Script
+# WebEnable CMS Production Helper Script
 
 set -e
 
@@ -29,7 +29,7 @@ print_error() {
 
 print_header() {
     echo -e "${BLUE}======================================${NC}"
-    echo -e "${BLUE} WebEnable CMS Development Environment${NC}"
+    echo -e "${BLUE} WebEnable CMS Production Environment${NC}"
     echo -e "${BLUE}======================================${NC}"
 }
 
@@ -38,6 +38,18 @@ check_docker() {
     if ! docker info >/dev/null 2>&1; then
         print_error "Docker is not running. Please start Docker Desktop."
         exit 1
+    fi
+}
+
+# Load environment variables
+load_env() {
+    if [ -f .env ]; then
+        print_status "Loading production environment variables..."
+        set -a
+        source .env
+        set +a
+    else
+        print_warning ".env file not found. Using default values."
     fi
 }
 
@@ -55,27 +67,26 @@ show_help() {
     echo "  build <service> Build specific service"
     echo "  status        Show status of all services"
     echo "  clean         Clean up containers and volumes"
-    echo "  frontend      Open frontend in browser"
-    echo "  backend       Open backend API in browser"
-    echo "  db            Open CouchDB admin in browser"
+    echo "  open          Open application in browser"
     echo "  shell <service> Open shell in service container"
     echo "  help          Show this help message"
     echo ""
     echo "Services:"
-    echo "  frontend      Next.js frontend (port 3000)"
-    echo "  backend       Node.js backend (port 8080)"
-    echo "  db            CouchDB database (port 5984)"
-    echo "  cache         Valkey cache (port 6379)"
+    echo "  frontend      Next.js frontend (via nginx)"
+    echo "  backend       Go backend API (via nginx)"
+    echo "  db            CouchDB database"
+    echo "  cache         Valkey cache"
+    echo "  nginx         Nginx reverse proxy (port 80)"
 }
 
 # Start services
 start_services() {
-    print_status "Starting WebEnable CMS services..."
+    load_env
+    print_status "Starting WebEnable CMS production services..."
     docker-compose -p $PROJECT_NAME up -d
     print_status "Services started successfully!"
-    print_status "Frontend: http://localhost:3000"
-    print_status "Backend API: http://localhost:8080"
-    print_status "CouchDB Admin: http://localhost:5984/_utils"
+    print_status "Application: http://localhost"
+    print_status "API: http://localhost/api"
 }
 
 # Stop services
@@ -87,6 +98,7 @@ stop_services() {
 
 # Restart services
 restart_services() {
+    load_env
     print_status "Restarting WebEnable CMS services..."
     docker-compose -p $PROJECT_NAME restart
     print_status "Services restarted successfully!"
@@ -103,12 +115,13 @@ show_logs() {
 
 # Build services
 build_services() {
+    load_env
     if [ -z "$1" ]; then
         print_status "Building all services..."
-        docker-compose -p $PROJECT_NAME build
+        docker-compose -p $PROJECT_NAME build --no-cache
     else
         print_status "Building $1 service..."
-        docker-compose -p $PROJECT_NAME build "$1"
+        docker-compose -p $PROJECT_NAME build --no-cache "$1"
     fi
     print_status "Build completed successfully!"
 }
@@ -134,32 +147,12 @@ clean_up() {
 }
 
 # Open in browser
-open_frontend() {
-    print_status "Opening frontend in browser..."
+open_app() {
+    print_status "Opening application in browser..."
     case "$(uname -s)" in
-        Darwin) open http://localhost:3000 ;;
-        Linux) xdg-open http://localhost:3000 ;;
-        CYGWIN*|MINGW32*|MSYS*|MINGW*) start http://localhost:3000 ;;
-        *) print_error "Unable to open browser automatically" ;;
-    esac
-}
-
-open_backend() {
-    print_status "Opening backend API in browser..."
-    case "$(uname -s)" in
-        Darwin) open http://localhost:8080 ;;
-        Linux) xdg-open http://localhost:8080 ;;
-        CYGWIN*|MINGW32*|MSYS*|MINGW*) start http://localhost:8080 ;;
-        *) print_error "Unable to open browser automatically" ;;
-    esac
-}
-
-open_db() {
-    print_status "Opening CouchDB admin in browser..."
-    case "$(uname -s)" in
-        Darwin) open http://localhost:5984/_utils ;;
-        Linux) xdg-open http://localhost:5984/_utils ;;
-        CYGWIN*|MINGW32*|MSYS*|MINGW*) start http://localhost:5984/_utils ;;
+        Darwin) open http://localhost ;;
+        Linux) xdg-open http://localhost ;;
+        CYGWIN*|MINGW32*|MSYS*|MINGW*) start http://localhost ;;
         *) print_error "Unable to open browser automatically" ;;
     esac
 }
@@ -201,14 +194,8 @@ case "${1:-help}" in
     clean)
         clean_up
         ;;
-    frontend)
-        open_frontend
-        ;;
-    backend)
-        open_backend
-        ;;
-    db)
-        open_db
+    open)
+        open_app
         ;;
     shell)
         open_shell "$2"

@@ -14,15 +14,12 @@ const nextConfig = {
     ],
   },
 
-  // Enable SWC minification
-  swcMinify: true,
-
   // Compress responses
   compress: true,
 
   // Optimize bundle
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true, // Disabled temporarily due to critters dependency issue
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
 
