@@ -5,7 +5,7 @@
 ### 🔧 Infrastructure Setup
 - [ ] **Domain Name**: Registered and DNS configured to point to server IP
 - [ ] **Server Requirements**: Minimum 4GB RAM, 2 vCPU, 40GB storage
-- [ ] **Docker Installation**: Docker and Docker Compose installed on server
+- [ ] **Podman Installation**: Podman and Podman Compose installed on server
 - [ ] **Firewall Configuration**: Ports 80, 443, and 5984 open
 - [ ] **SSH Access**: Secure SSH key-based access configured
 
@@ -22,7 +22,7 @@
 - [ ] **Certificate Validation**: Verify automatic certificate generation works
 
 ### 📊 Performance Optimization
-- [ ] **Resource Limits**: Docker container resource limits configured
+- [ ] **Resource Limits**: Podman container resource limits configured
 - [ ] **Database Indexing**: CouchDB views and indexes optimized
 - [ ] **Cache Configuration**: Valkey cache properly configured with TTL
 - [ ] **Compression**: Gzip/Zstd compression enabled
@@ -36,11 +36,10 @@
 sudo apt update && sudo apt upgrade -y
 
 # Install required packages
-sudo apt install docker.io docker-compose-plugin git -y
+sudo apt install podman git -y
 
 # Create application user
 sudo useradd -m -s /bin/bash cms
-sudo usermod -aG docker cms
 ```
 
 ### 2. Application Deployment
@@ -63,10 +62,10 @@ nano .env.production  # Edit with production values
 nano caddy/Caddyfile  # Replace localhost with your domain
 
 # Start services
-docker-compose up -d
+podman compose up -d
 
 # Initialize admin user
-docker-compose exec backend ./main init-admin
+podman compose exec backend ./main init-admin
 ```
 
 ### 3. Post-Deployment Verification
@@ -75,8 +74,8 @@ docker-compose exec backend ./main init-admin
 ./scripts/production-readiness-test.sh
 
 # Check service health
-docker-compose ps
-docker-compose logs
+podman compose ps
+podman compose logs
 
 # Test application functionality
 curl https://yourdomain.com
@@ -129,7 +128,7 @@ openssl rand -base64 32
 ### 🔄 Backup Strategy
 - [ ] **Database Backups**: Automated CouchDB backups configured
 - [ ] **Configuration Backups**: Environment and configuration files backed up
-- [ ] **Volume Backups**: Docker volumes regularly backed up
+- [ ] **Volume Backups**: Podman volumes regularly backed up
 - [ ] **Recovery Testing**: Backup restoration process tested
 
 ### 🛡️ Security Monitoring
@@ -151,7 +150,7 @@ openssl rand -base64 32
 #### 1. SSL Certificate Issues
 ```bash
 # Check Caddy logs
-docker logs cms-caddy-1
+podman logs cms-caddy-1
 
 # Verify domain DNS
 nslookup yourdomain.com
@@ -163,7 +162,7 @@ curl -I http://yourdomain.com/.well-known/acme-challenge/test
 #### 2. Database Connection Issues
 ```bash
 # Check database health
-docker logs cms-db-1
+podman logs cms-db-1
 
 # Test database connectivity
 curl http://localhost:5984
@@ -175,11 +174,11 @@ curl -u admin:password http://localhost:5984/_all_dbs
 #### 3. Performance Issues
 ```bash
 # Check resource usage
-docker stats
+podman stats
 
 # Check application logs
-docker-compose logs backend
-docker-compose logs frontend
+podman compose logs backend
+podman compose logs frontend
 
 # Monitor database performance
 curl -u admin:password http://localhost:5984/_utils/

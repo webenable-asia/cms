@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Docker-based Valkey Rate Limit Reset Script
+# Podman-based Valkey Rate Limit Reset Script
 # Uses the Valkey container to execute commands
 
 COMPOSE_FILE="docker-compose.yml"
@@ -13,10 +13,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to execute Valkey commands via Docker
+# Function to execute Valkey commands via Podman
 valkey_exec() {
     local command="$1"
-    docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning $command
+    podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning $command
 }
 
 # Function to reset rate limits by pattern
@@ -39,7 +39,7 @@ reset_by_pattern() {
     
     # Delete all matching keys using DEL command
     if [ "$key_count" -gt 0 ]; then
-        echo "$keys" | xargs -I {} docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning DEL {}
+        echo "$keys" | xargs -I {} podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning DEL {}
         echo -e "${GREEN}✓ Reset $key_count rate limit entries for $description${NC}"
     fi
 }
@@ -95,10 +95,10 @@ show_status() {
     echo ""
     
     # Count different types of rate limits
-    local api_count=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:api:*" | wc -l)
-    local auth_count=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:auth:*" | wc -l) 
-    local user_count=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:user:*" | wc -l)
-    local total_count=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:*" | wc -l)
+    local api_count=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:api:*" | wc -l)
+    local auth_count=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:auth:*" | wc -l) 
+    local user_count=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:user:*" | wc -l)
+    local total_count=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:*" | wc -l)
     
     echo -e "API Rate Limits:    ${YELLOW}$api_count${NC}"
     echo -e "Auth Rate Limits:   ${YELLOW}$auth_count${NC}"
@@ -109,10 +109,10 @@ show_status() {
     # Show some example entries
     if [ "$total_count" -gt 0 ]; then
         echo -e "${BLUE}Recent Rate Limit Entries:${NC}"
-        docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:*" | head -5 | while read -r key; do
+        podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning KEYS "rate_limit:*" | head -5 | while read -r key; do
             if [ -n "$key" ] && [ "$key" != "(empty array)" ]; then
-                local value=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning GET "$key")
-                local ttl=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning TTL "$key")
+                local value=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning GET "$key")
+                local ttl=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning TTL "$key")
                 echo -e "  $key: ${YELLOW}$value${NC} (TTL: ${ttl}s)"
             fi
         done
@@ -122,7 +122,7 @@ show_status() {
 # Function to show help
 show_help() {
     cat << EOF
-${BLUE}WebEnable CMS Docker Valkey Rate Limit Reset${NC}
+${BLUE}WebEnable CMS Podman Valkey Rate Limit Reset${NC}
 
 ${YELLOW}USAGE:${NC}
     $0 <command> [options]
@@ -145,11 +145,11 @@ ${YELLOW}EXAMPLES:${NC}
     $0 status
 
 ${YELLOW}REQUIREMENTS:${NC}
-    - Docker and docker-compose
-    - Valkey service running in Docker
+    - Podman and podman compose
+    - Valkey service running in Podman
 
 ${YELLOW}NOTE:${NC}
-    This script uses docker-compose to connect to the Valkey container.
+    This script uses podman compose to connect to the Valkey container.
     Make sure you're running this from the project root directory.
 EOF
 }
@@ -158,21 +158,21 @@ EOF
 main() {
     local command="$1"
     
-    # Check if docker-compose is available
-    if ! command -v docker-compose >/dev/null 2>&1; then
-        echo -e "${RED}Error: docker-compose is required but not installed${NC}"
+    # Check if podman compose is available
+    if ! command -v podman >/dev/null 2>&1; then
+        echo -e "${RED}Error: podman is required but not installed${NC}"
         exit 1
     fi
     
     # Check if Valkey service is running
-    if ! docker-compose ps "$VALKEY_SERVICE" | grep -q "Up"; then
+    if ! podman compose ps "$VALKEY_SERVICE" | grep -q "Up"; then
         echo -e "${RED}Error: Valkey service ($VALKEY_SERVICE) is not running${NC}"
-        echo "Start it with: docker-compose up -d $VALKEY_SERVICE"
+        echo "Start it with: podman compose up -d $VALKEY_SERVICE"
         exit 1
     fi
     
     # Test connection
-    local ping_result=$(docker-compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning PING 2>/dev/null)
+    local ping_result=$(podman compose exec -T "$VALKEY_SERVICE" redis-cli -a valkeypassword --no-auth-warning PING 2>/dev/null)
     if [ "$ping_result" != "PONG" ]; then
         echo -e "${RED}Error: Cannot connect to Valkey service${NC}"
         exit 1
