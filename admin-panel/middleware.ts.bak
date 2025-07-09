@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from "next/server"
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // Add security headers
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', pathname)
+
+  // Simple authentication check without complex token parsing
+  // Let the client-side handle most auth logic
+  const hasAuthHeader = request.headers.has('authorization')
+  const hasAuthCookie = request.cookies.has('webenable_token')
+  const hasToken = hasAuthHeader || hasAuthCookie
+
+  // Basic redirect logic - keep it simple for edge runtime
+  if (pathname === '/login' && hasToken) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Protected routes
+  const protectedPaths = ['/dashboard', '/posts', '/users', '/contacts']
+  const isProtected = protectedPaths.some(path => pathname.startsWith(path))
+  
+  if (isProtected && !hasToken) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+}

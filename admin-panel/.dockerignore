@@ -8,7 +8,7 @@ node_modules
 .gitignore
 README.md
 Dockerfile
-Containerfile
+Dockerfile
 .dockerignore
 npm-debug.log*
 yarn-debug.log*

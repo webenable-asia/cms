@@ -150,8 +150,37 @@ export default function PostEditor({ postId, mode }: PostEditorProps) {
     if (result) {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+      
+      // Clear cache and trigger refresh
+      if (typeof window !== 'undefined') {
+        // Clear any cached data
+        localStorage.removeItem('posts_cache')
+        localStorage.removeItem('dashboard_cache')
+        
+        // Clear browser cache for admin routes
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              if (name.includes('admin') || name.includes('posts')) {
+                caches.delete(name)
+              }
+            })
+          })
+        }
+        
+        // Trigger a custom event to refresh dashboard
+        window.dispatchEvent(new CustomEvent('postsUpdated', { 
+          detail: { 
+            action: mode, 
+            postId: result.id || postId,
+            status 
+          } 
+        }))
+      }
+      
       if (status === 'published') {
-        router.push('/dashboard?tab=posts')
+        // Add cache-busting parameter to force fresh data
+        router.push('/dashboard?tab=posts&refresh=' + Date.now())
       }
     }
   }

@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# Production environment (Podman)
-echo "🚀 Building and starting production environment with Podman..."
+# Production environment (Docker)
+echo "🚀 Building and starting production environment with Docker..."
 
 export NODE_ENV=production
 export GO_ENV=production
 
 # Build optimized images
-podman compose -f podman-compose.yml build --parallel --no-cache
+docker compose -f docker-compose.yml build --parallel --no-cache
 
 # Start services
-podman compose -f podman-compose.yml up -d
+docker compose -f docker-compose.yml up -d
 
 echo "✅ Production environment started!"
 echo "🌐 Application: http://localhost"
 echo "📊 Health check: http://localhost/health"
 
 # Show logs
-podman compose -f podman-compose.yml logs -f
+docker compose -f docker-compose.yml logs -f

@@ -9,6 +9,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
@@ -16,7 +19,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.BACKEND_URL || 'http://backend:8080'}/:path*`,
+        destination: `${process.env.BACKEND_URL || 'http://backend:8080'}/api/:path*`,
       },
     ]
   },

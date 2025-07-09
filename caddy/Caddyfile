@@ -25,6 +25,22 @@ localhost:80 {
         -Server
     }
 
+    # Admin panel WebSocket support for real-time updates
+    handle /api/admin/ws {
+        reverse_proxy backend:8080 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Connection {>Connection}
+            header_up Upgrade {>Upgrade}
+            header_up Sec-WebSocket-Key {>Sec-WebSocket-Key}
+            header_up Sec-WebSocket-Version {>Sec-WebSocket-Version}
+            header_up Sec-WebSocket-Protocol {>Sec-WebSocket-Protocol}
+            header_up Sec-WebSocket-Extensions {>Sec-WebSocket-Extensions}
+        }
+    }
+
     # Admin panel static assets - serve from admin panel service (don't strip prefix)
     handle /admin/_next/* {
         reverse_proxy admin-panel:3001 {
@@ -36,7 +52,7 @@ localhost:80 {
         header Cache-Control "public, max-age=31536000, immutable"
     }
 
-    # Admin panel API routes - forward to admin panel (but they should proxy to backend)
+    # Admin panel API routes - enhanced no-cache with real-time headers
     handle /admin/api/* {
         reverse_proxy admin-panel:3001 {
             header_up Host {upstream_hostport}
@@ -44,9 +60,18 @@ localhost:80 {
             header_up X-Forwarded-For {remote_ip}
             header_up X-Forwarded-Proto {scheme}
         }
+        # Ultra-strict no-cache for admin API
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header Last-Modified "Thu, 01 Jan 1970 00:00:00 GMT"
+        header ETag ""
+        header X-Admin-Mode "realtime"
+        header X-Admin-Realtime "enabled"
+        header Vary "*"
     }
 
-    # Admin panel routes - proxy to admin panel (no caching)
+    # Admin panel routes - comprehensive no-cache with real-time support
     handle /admin/* {
         reverse_proxy admin-panel:3001 {
             header_up Host {upstream_hostport}
@@ -54,13 +79,20 @@ localhost:80 {
             header_up X-Forwarded-For {remote_ip}
             header_up X-Forwarded-Proto {scheme}
         }
-        # Ensure admin pages are never cached
-        header Cache-Control "no-cache, no-store, must-revalidate"
+        # Comprehensive no-cache headers for admin panel
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate"
         header Pragma "no-cache"
-        header Expires "0"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header Last-Modified "Thu, 01 Jan 1970 00:00:00 GMT"
+        header ETag ""
+        header X-Admin-Realtime "enabled"
+        header X-Admin-Route "true"
+        header Vary "*"
+        # Prevent any proxy caching
+        header Surrogate-Control "no-store"
     }
 
-    # Admin root - proxy to admin panel
+    # Admin root - enhanced no-cache with real-time headers
     handle /admin {
         reverse_proxy admin-panel:3001 {
             header_up Host {upstream_hostport}
@@ -68,10 +100,51 @@ localhost:80 {
             header_up X-Forwarded-For {remote_ip}
             header_up X-Forwarded-Proto {scheme}
         }
-        # Ensure admin pages are never cached
-        header Cache-Control "no-cache, no-store, must-revalidate"
+        # Ultra-strict no-cache for admin root
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate"
         header Pragma "no-cache"
-        header Expires "0"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header Last-Modified "Thu, 01 Jan 1970 00:00:00 GMT"
+        header ETag ""
+        header X-Admin-Realtime "enabled"
+        header X-Admin-Route "true"
+        header Vary "*"
+        header Surrogate-Control "no-store"
+    }
+
+    # Backend admin API routes - direct access with no caching
+    handle /api/admin/* {
+        reverse_proxy backend:8080 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin API
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-API "true"
+        header X-Admin-Realtime "enabled"
+    }
+
+    # Real-time API routes - no caching for admin dashboard
+    handle /api/posts {
+        reverse_proxy backend:8080 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # Ultra-strict no-cache for real-time data
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header Last-Modified "Thu, 01 Jan 1970 00:00:00 GMT"
+        header ETag ""
+        header X-Realtime-API "enabled"
+        header Vary "*"
+        header Surrogate-Control "no-store"
     }
 
     # API routes - proxy to backend (without stripping path)
@@ -82,6 +155,81 @@ localhost:80 {
             header_up X-Forwarded-For {remote_ip}
             header_up X-Forwarded-Proto {scheme}
         }
+    }
+
+    # Admin panel root routes (login, dashboard) - route to admin panel with path rewriting
+    handle /login {
+        rewrite * /admin/login
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin routes
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-Route "true"
+        header X-Admin-Realtime "enabled"
+    }
+
+    handle /dashboard* {
+        rewrite * /admin{path}
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin routes
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-Route "true"
+        header X-Admin-Realtime "enabled"
+    }
+
+    handle /posts/* {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin routes
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-Route "true"
+    }
+
+    handle /contacts {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin routes
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-Route "true"
+    }
+
+    handle /users {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # No caching for admin routes
+        header Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        header Pragma "no-cache"
+        header Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+        header X-Admin-Route "true"
     }
 
     # Health check endpoint

@@ -67,12 +67,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Call the backend logout endpoint
       await authApi.logout()
     } catch (error) {
       console.warn('Logout API call failed:', error)
+      // Continue with cleanup even if backend call fails
     } finally {
+      // Always perform client-side cleanup
       setUser(null)
       tokenManager.removeToken()
+      
+      // Clear any additional localStorage items
+      if (typeof window !== 'undefined') {
+        // Clear any cached user data
+        localStorage.removeItem('webenable_user')
+        localStorage.removeItem('admin_session')
+        // Remove any Next.js cache
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              if (name.includes('admin')) {
+                caches.delete(name)
+              }
+            })
+          })
+        }
+      }
     }
   }
 

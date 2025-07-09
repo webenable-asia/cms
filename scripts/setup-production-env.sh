@@ -245,6 +245,38 @@ update_caddyfile() {
     fi
 }
 
+# Update docker-compose.yml for production
+update_docker_compose() {
+    echo ""
+    print_status "Updating docker-compose.yml with production values..."
+    
+    if [ -f "docker-compose.yml" ]; then
+        # Backup original
+        cp docker-compose.yml docker-compose.yml.backup
+        
+        # Create a temporary file with updated content
+        awk -v db_pass="${DB_PASSWORD}" '
+        /COUCHDB_PASSWORD:/ {
+            print "      COUCHDB_PASSWORD: " db_pass;
+            next;
+        }
+        /COUCHDB_URL=http:\/\/admin:/ {
+            print "      - COUCHDB_URL=http://admin:" db_pass "@db:5984/";
+            next;
+        }
+        {print}
+        ' docker-compose.yml > docker-compose.yml.new
+        
+        # Replace the original file with the updated one
+        mv docker-compose.yml.new docker-compose.yml
+        
+        print_status "docker-compose.yml updated with production values"
+        print_status "Backup saved as: docker-compose.yml.backup"
+    else
+        print_warning "docker-compose.yml not found, skipping update"
+    fi
+}
+
 # Create deployment checklist
 create_checklist() {
     cat > DEPLOYMENT_CHECKLIST.md << EOF
@@ -259,8 +291,8 @@ create_checklist() {
 ## Deployment
 - [ ] Copy .env.production to server as .env
 - [ ] Update Caddyfile with production domain
-- [ ] Run: podman compose up -d
-- [ ] Initialize admin user: podman compose exec backend ./main init-admin
+- [ ] Run: docker compose up -d
+- [ ] Initialize admin user: docker compose exec backend ./main init-admin
 
 ## Post-Deployment
 - [ ] Test HTTPS access: https://${DOMAIN}
@@ -315,6 +347,7 @@ main() {
     
     generate_production_env
     update_caddyfile
+    update_docker_compose
     create_checklist
     show_security_tips
     
@@ -324,7 +357,7 @@ main() {
     echo "1. Review .env.production file"
     echo "2. Copy to your production server as .env"
     echo "3. Follow DEPLOYMENT_CHECKLIST.md"
-    echo "4. Deploy with: podman compose up -d"
+    echo "4. Deploy with: docker compose up -d"
 }
 
 # Run setup

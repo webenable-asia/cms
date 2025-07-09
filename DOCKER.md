@@ -1,8 +1,8 @@
-# Podman Development Guide
+# Docker Development Guide
 
-## � Podman-First Development
+## � Docker-First Development
 
-WebEnable CMS is designed for **Podman Compose development** to ensure consistency across all environments and simplify the development workflow.
+WebEnable CMS is designed for **Docker Compose development** to ensure consistency across all environments and simplify the development workflow.
 
 ## Quick Start
 
@@ -10,28 +10,28 @@ WebEnable CMS is designed for **Podman Compose development** to ensure consisten
 
 #### macOS Installation
 ```bash
-# Install Podman
-brew install podman
+# Install Docker
+brew install docker
 
-# Initialize and start Podman machine
-podman machine init
-podman machine start
+# Initialize and start Docker machine
+docker machine init
+docker machine start
 
 # Verify installation
-podman info
+docker info
 ```
 
 #### Linux Installation
 ```bash
 # Ubuntu/Debian
 sudo apt update
-sudo apt install podman
+sudo apt install docker
 
 # Red Hat/Fedora/CentOS
-sudo dnf install podman
+sudo dnf install docker
 
 # Verify installation
-podman info
+docker info
 ```
 
 ### Start Development Environment
@@ -44,7 +44,7 @@ cd /Users/tsaa/workspace/projects/webenable/cms
 ./scripts/dev.sh
 
 # Or manually
-podman compose up --build
+docker compose up --build
 ```
 
 ### Access Applications
@@ -73,7 +73,7 @@ podman compose up --build
 
 - **Frontend**: Hot reload enabled, changes reflect immediately
 - **Backend**: Air live reload, Go code restarts automatically
-- **Database**: Persistent data in Podman volumes
+- **Database**: Persistent data in Docker volumes
 
 ### 3. Rebuilding
 
@@ -90,7 +90,7 @@ podman compose up --build
 ./manage.sh shell frontend  # Open shell in container
 ```
 
-## Podman Services Architecture
+## Docker Services Architecture
 
 ### Frontend Service (`webenable-cms-frontend`)
 
@@ -155,7 +155,7 @@ podman compose up --build
 ./manage.sh open               # Open frontend in browser
 ```
 
-## Podman Volumes
+## Docker Volumes
 
 ### Data Persistence
 
@@ -166,20 +166,20 @@ podman compose up --build
 
 ```bash
 # View volumes
-podman volume ls
+docker volume ls
 
 # Inspect volume
-podman volume inspect webenable-cms_couchdb_data
+docker volume inspect webenable-cms_couchdb_data
 
 # Backup volume
-podman run --rm -v webenable-cms_couchdb_data:/data -v $(pwd):/backup alpine tar czf /backup/couchdb-backup.tar.gz /data
+docker run --rm -v webenable-cms_couchdb_data:/data -v $(pwd):/backup alpine tar czf /backup/couchdb-backup.tar.gz /data
 ```
 
 ## Network Configuration
 
 ### Internal Communication
 
-- Services communicate via Podman network (`webenable-cms_default`)
+- Services communicate via Docker network (`webenable-cms_default`)
 - Internal hostnames: `frontend`, `backend`, `db`, `cache`
 - No external dependencies required
 
@@ -196,10 +196,10 @@ podman run --rm -v webenable-cms_couchdb_data:/data -v $(pwd):/backup alpine tar
 
 ### Configuration Files
 
-- **Podman Compose**: `podman-compose.yml`
+- **Docker Compose**: `docker-compose.yml`
 - **Environment Template**: `.env.example`
-- **Frontend Containerfile**: `frontend/Containerfile`
-- **Backend Containerfile**: `backend/Containerfile`
+- **Frontend Dockerfile**: `frontend/Dockerfile`
+- **Backend Dockerfile**: `backend/Dockerfile`
 
 ### Key Variables
 
@@ -222,7 +222,7 @@ CORS_ORIGINS=http://localhost:3000,http://frontend:3000
 
 ### Build Optimization
 
-- **Layer Caching**: Containerfile layers optimized for caching
+- **Layer Caching**: Dockerfile layers optimized for caching
 - **Multi-stage Builds**: Separate build and runtime stages
 - **Ignore Files**: `.dockerignore` excludes unnecessary files
 
@@ -261,10 +261,10 @@ CORS_ORIGINS=http://localhost:3000,http://frontend:3000
 
 ```bash
 # Verbose logging
-podman compose --log-level debug up
+docker compose --log-level debug up
 
 # Individual service debugging
-podman compose up frontend --build
+docker compose up frontend --build
 ```
 
 ## Production Deployment
@@ -273,24 +273,24 @@ podman compose up frontend --build
 
 ```bash
 # Create production images
-podman compose -f podman-compose.yml build
+docker compose -f docker-compose.yml build
 
 # Deploy to registry
-podman compose -f podman-compose.yml push
+docker compose -f docker-compose.yml push
 ```
 
 ### Environment-Specific Configs
 
-- **Development**: `podman-compose.yml`
-- **Production**: `podman-compose.yml`
-- **Testing**: `podman-compose.yml`
+- **Development**: `docker-compose.yml`
+- **Production**: `docker-compose.yml`
+- **Testing**: `docker-compose.yml`
 
-## Podman vs Docker Differences
+## Docker vs Docker Differences
 
-### Key Advantages of Podman
+### Key Advantages of Docker
 
 1. **Rootless by Default**: Enhanced security with rootless containers
-2. **No Daemon**: Podman doesn't require a background daemon
+2. **No Daemon**: Docker doesn't require a background daemon
 3. **Systemd Integration**: Native systemd support for service management
 4. **OCI Compliant**: Fully compatible with Open Container Initiative standards
 5. **Pod Support**: Kubernetes-style pod management capabilities
@@ -299,9 +299,9 @@ podman compose -f podman-compose.yml push
 
 - Commands are largely compatible (drop-in replacement)
 - Volume and network handling is similar
-- All existing Containerfiles work without modification
-- `podman compose` replaces `docker-compose`
+- All existing Dockerfiles work without modification
+- `docker compose` replaces `docker-compose`
 
 ---
 
-Remember: **Always use Podman Compose** for WebEnable CMS development to ensure consistency and avoid environment-specific issues.
+Remember: **Always use Docker Compose** for WebEnable CMS development to ensure consistency and avoid environment-specific issues.

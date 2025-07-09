@@ -77,9 +77,9 @@ LOG_LEVEL=info
 
 ### 1. Server Preparation
 ```bash
-# Install Podman
+# Install Docker
 sudo apt update
-sudo apt install podman git
+sudo apt install docker git
 
 # Create application user
 sudo useradd -m -s /bin/bash cms
@@ -105,19 +105,19 @@ chmod 600 .env
 sudo -u cms bash
 
 # Start production services
-podman compose up -d
+docker compose up -d
 
 # Initialize admin user
-podman compose exec backend go run scripts/init_admin.go
+docker compose exec backend go run scripts/init_admin.go
 ```
 
 ### 4. Verify Deployment
 ```bash
 # Check service status
-podman compose ps
+docker compose ps
 
 # Check logs
-podman compose logs
+docker compose logs
 
 # Test health endpoint
 curl https://yourdomain.com/api/health
@@ -172,29 +172,29 @@ The setup script automatically updates your Caddyfile:
 curl https://yourdomain.com/api/health
 
 # Service status
-podman compose ps
+docker compose ps
 
 # Resource usage
-podman stats
+docker stats
 ```
 
 ### Log Management
 ```bash
 # View application logs
-podman compose logs -f
+docker compose logs -f
 
 # View specific service logs
-podman compose logs backend
-podman compose logs frontend
+docker compose logs backend
+docker compose logs frontend
 ```
 
 ### Backup Strategy
 ```bash
 # Backup database
-podman exec cms-db-1 curl -X GET http://admin:password@localhost:5984/_all_dbs
+docker exec cms-db-1 curl -X GET http://admin:password@localhost:5984/_all_dbs
 
 # Backup volumes
-podman run --rm -v cms_couchdb_data:/data -v $(pwd):/backup alpine \
+docker run --rm -v cms_couchdb_data:/data -v $(pwd):/backup alpine \
   tar czf /backup/couchdb-$(date +%Y%m%d).tar.gz /data
 ```
 
@@ -205,7 +205,7 @@ podman run --rm -v cms_couchdb_data:/data -v $(pwd):/backup alpine \
 #### SSL Certificate Issues
 ```bash
 # Check Caddy logs
-podman compose logs caddy
+docker compose logs caddy
 
 # Verify domain DNS
 nslookup yourdomain.com
@@ -217,7 +217,7 @@ telnet yourdomain.com 80
 #### Database Connection Issues
 ```bash
 # Check database status
-podman compose logs db
+docker compose logs db
 
 # Test database connection
 curl http://admin:password@localhost:5984/_all_dbs
@@ -226,10 +226,10 @@ curl http://admin:password@localhost:5984/_all_dbs
 #### Performance Issues
 ```bash
 # Monitor resource usage
-podman stats
+docker stats
 
 # Check cache status
-podman compose exec cache redis-cli ping
+docker compose exec cache redis-cli ping
 ```
 
 ### Emergency Procedures
@@ -237,10 +237,10 @@ podman compose exec cache redis-cli ping
 #### Service Recovery
 ```bash
 # Restart all services
-podman compose restart
+docker compose restart
 
 # Rebuild if needed
-podman compose up -d --force-recreate
+docker compose up -d --force-recreate
 ```
 
 #### Security Incident Response
@@ -259,7 +259,7 @@ podman compose up -d --force-recreate
 - `scripts/cleanup.sh` - Cleanup and maintenance
 
 ### Documentation
-- `PODMAN.md` - Podman development guide
+- `DOCKER.md` - Docker development guide
 - `PRODUCTION_DEPLOYMENT.md` - Detailed deployment guide
 - `SECURITY_CHECKLIST.md` - Security implementation checklist
 

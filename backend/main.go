@@ -157,12 +157,17 @@ func main() {
 		json.NewEncoder(w).Encode(response)
 	}).Methods("GET")
 
+	// Real-time routes (no caching) for admin features
+	realtime := api.PathPrefix("").Subrouter()
+	realtime.Use(rateLimiter.RateLimit(100))           // 100 requests per minute
+	realtime.Use(middleware.NoCache())                 // No caching for real-time data
+	realtime.HandleFunc("/posts", handlers.GetPosts).Methods("GET")
+	
 	// Public routes with lighter rate limiting and page caching
 	public := api.PathPrefix("").Subrouter()
 	public.Use(rateLimiter.RateLimit(100))             // 100 requests per minute for public routes
 	public.Use(pageCache.PageCacheMiddleware())        // Add page caching for public routes
 	public.Use(middleware.CacheControlMiddleware(600)) // 10 minutes browser cache
-	public.HandleFunc("/posts", handlers.GetPosts).Methods("GET")
 	public.HandleFunc("/posts/{id}", handlers.GetPost).Methods("GET")
 	public.HandleFunc("/contact", handlers.SubmitContact).Methods("POST")
 
@@ -184,13 +189,35 @@ func main() {
 	protected.HandleFunc("/posts", handlers.CreatePost).Methods("POST")
 	protected.HandleFunc("/posts/{id}", handlers.UpdatePost).Methods("PUT")
 	protected.HandleFunc("/posts/{id}", handlers.DeletePost).Methods("DELETE")
+
+	// Admin routes with real-time headers and no caching
+	admin := api.PathPrefix("/admin").Subrouter()
+	admin.Use(middleware.AuthMiddleware)
+	admin.Use(middleware.AdminRealtimeHeaders())       // Real-time headers for admin
+	admin.Use(middleware.NoCache())                    // Complete cache bypass
+	admin.Use(middleware.AdminSecurityHeaders())       // Enhanced security for admin
+	admin.Use(rateLimiter.UserRateLimit(200))         // Higher rate limit for admin operations
+
+	// Admin-specific API routes
+	admin.HandleFunc("/users", handlers.GetUsers).Methods("GET")
+	admin.HandleFunc("/users", handlers.CreateUser).Methods("POST")
+	admin.HandleFunc("/users/{id}", handlers.GetUser).Methods("GET")
+	admin.HandleFunc("/users/{id}", handlers.UpdateUser).Methods("PUT")
+	admin.HandleFunc("/users/{id}", handlers.DeleteUser).Methods("DELETE")
+	admin.HandleFunc("/contacts", handlers.GetContacts).Methods("GET")
+	admin.HandleFunc("/contacts/{id}", handlers.GetContact).Methods("GET")
+	admin.HandleFunc("/contacts/{id}", handlers.UpdateContactStatus).Methods("PUT")
+	admin.HandleFunc("/contacts/{id}/reply", handlers.ReplyToContact).Methods("POST")
+	admin.HandleFunc("/contacts/{id}", handlers.DeleteContact).Methods("DELETE")
+
+	// Legacy protected routes for backward compatibility
 	protected.HandleFunc("/contacts", handlers.GetContacts).Methods("GET")
 	protected.HandleFunc("/contacts/{id}", handlers.GetContact).Methods("GET")
 	protected.HandleFunc("/contacts/{id}", handlers.UpdateContactStatus).Methods("PUT")
 	protected.HandleFunc("/contacts/{id}/reply", handlers.ReplyToContact).Methods("POST")
 	protected.HandleFunc("/contacts/{id}", handlers.DeleteContact).Methods("DELETE")
 
-	// User management routes (admin only)
+	// User management routes (admin only) - keep for backward compatibility
 	protected.HandleFunc("/users", handlers.GetUsers).Methods("GET")
 	protected.HandleFunc("/users", handlers.CreateUser).Methods("POST")
 	protected.HandleFunc("/users/stats", handlers.GetUserStats).Methods("GET")

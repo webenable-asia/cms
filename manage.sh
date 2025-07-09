@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# WebEnable CMS Production Helper Script (Podman)
+# WebEnable CMS Production Helper Script (Docker)
 
 set -e
 
-COMPOSE_FILE="podman-compose.yml"
+COMPOSE_FILE="docker-compose.yml"
 PROJECT_NAME="webenable-cms"
 
 # Colors for output
@@ -33,13 +33,13 @@ print_header() {
     echo -e "${BLUE}======================================${NC}"
 }
 
-# Check if Podman is running
-check_podman() {
-    if ! podman info >/dev/null 2>&1; then
-        print_error "Podman is not running or not properly configured."
-        print_status "Please ensure Podman is installed and running."
-        print_status "On macOS: brew install podman && podman machine init && podman machine start"
-        print_status "On Linux: sudo apt install podman (or equivalent package manager)"
+# Check if Docker is running
+check_docker() {
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker is not running or not properly configured."
+        print_status "Please ensure Docker is installed and running."
+        print_status "On macOS: brew install docker && docker machine init && docker machine start"
+        print_status "On Linux: sudo apt install docker (or equivalent package manager)"
         exit 1
     fi
 }
@@ -86,7 +86,7 @@ show_help() {
 start_services() {
     load_env
     print_status "Starting WebEnable CMS production services..."
-    podman compose -p $PROJECT_NAME up -d
+    docker compose -p $PROJECT_NAME up -d
     print_status "Services started successfully!"
     print_status "Application: http://localhost"
     print_status "API: http://localhost/api"
@@ -95,7 +95,7 @@ start_services() {
 # Stop services
 stop_services() {
     print_status "Stopping WebEnable CMS services..."
-    podman compose -p $PROJECT_NAME down
+    docker compose -p $PROJECT_NAME down
     print_status "Services stopped successfully!"
 }
 
@@ -103,16 +103,16 @@ stop_services() {
 restart_services() {
     load_env
     print_status "Restarting WebEnable CMS services..."
-    podman compose -p $PROJECT_NAME restart
+    docker compose -p $PROJECT_NAME restart
     print_status "Services restarted successfully!"
 }
 
 # Show logs
 show_logs() {
     if [ -z "$1" ]; then
-        podman compose -p $PROJECT_NAME logs -f
+        docker compose -p $PROJECT_NAME logs -f
     else
-        podman compose -p $PROJECT_NAME logs -f "$1"
+        docker compose -p $PROJECT_NAME logs -f "$1"
     fi
 }
 
@@ -121,10 +121,10 @@ build_services() {
     load_env
     if [ -z "$1" ]; then
         print_status "Building all services..."
-        podman compose -p $PROJECT_NAME build --no-cache
+        docker compose -p $PROJECT_NAME build --no-cache
     else
         print_status "Building $1 service..."
-        podman compose -p $PROJECT_NAME build --no-cache "$1"
+        docker compose -p $PROJECT_NAME build --no-cache "$1"
     fi
     print_status "Build completed successfully!"
 }
@@ -132,7 +132,7 @@ build_services() {
 # Show status
 show_status() {
     print_status "WebEnable CMS Services Status:"
-    podman compose -p $PROJECT_NAME ps
+    docker compose -p $PROJECT_NAME ps
 }
 
 # Clean up
@@ -141,8 +141,8 @@ clean_up() {
     read -r response
     if [[ "$response" =~ ^[Yy]$ ]]; then
         print_status "Cleaning up containers and volumes..."
-        podman compose -p $PROJECT_NAME down -v --remove-orphans
-        podman system prune -f
+        docker compose -p $PROJECT_NAME down -v --remove-orphans
+        docker system prune -f
         print_status "Cleanup completed!"
     else
         print_status "Cleanup cancelled."
@@ -167,13 +167,13 @@ open_shell() {
         exit 1
     fi
     print_status "Opening shell in $1 container..."
-    podman compose -p $PROJECT_NAME exec "$1" /bin/sh
+    docker compose -p $PROJECT_NAME exec "$1" /bin/sh
 }
 
 # Main script logic
 print_header
 
-check_podman
+check_docker
 
 case "${1:-help}" in
     start)

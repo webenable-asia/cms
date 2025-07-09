@@ -2,7 +2,7 @@
 ARG GO_ENV=development
 
 # ===== Dependencies Stage =====
-FROM golang:1.24-alpine AS deps
+FROM docker.io/golang:1.24-alpine AS deps
 RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN go mod download
 RUN go mod verify
 
 # ===== Builder Stage (Production only) =====
-FROM golang:1.24-alpine AS builder
+FROM docker.io/golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -32,7 +32,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o main .
 
 # ===== Production Stage =====
-FROM alpine:3.22 AS production
+FROM docker.io/alpine:3.22 AS production
 WORKDIR /app
 
 # Install CA certificates and timezone data
@@ -55,7 +55,7 @@ USER appuser
 CMD ["./main"]
 
 # ===== Development Stage =====
-FROM golang:1.24-alpine AS development
+FROM docker.io/golang:1.24-alpine AS development
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app

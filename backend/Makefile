@@ -50,12 +50,12 @@ clean:
 	rm -rf bin/
 	rm -f coverage.out coverage.html
 
-# Podman
-podman-build:
-	podman build -t webenable-cms-backend .
+# Docker
+docker-build:
+	docker build -t webenable-cms-backend .
 
-podman-run:
-	podman compose up --build
+docker-run:
+	docker compose up --build
 
 # Database
 init-admin:

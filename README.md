@@ -41,7 +41,7 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 ## Prerequisites
 
-- Podman and Podman Compose
+- Docker and Docker Compose
 - Node.js 20+ (for local development)
 - Go 1.24+ (for local development - released February 2025)
 
@@ -81,19 +81,19 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    openssl rand -base64 16
    ```
 
-## Quick Start (Podman - Recommended)
+## Quick Start (Docker - Recommended)
 
-**WebEnable CMS is designed to run with Podman Compose for the complete production experience.**
+**WebEnable CMS is designed to run with Docker Compose for the complete production experience.**
 
-1. **Install Podman:**
+1. **Install Docker:**
    ```bash
    # macOS
-   brew install podman
-   podman machine init
-   podman machine start
+   brew install docker
+   docker machine init
+   docker machine start
    
    # Linux (Ubuntu/Debian)
-   sudo apt update && sudo apt install podman
+   sudo apt update && sudo apt install docker
    ```
 
 2. **Clone and navigate to the project:**
@@ -108,9 +108,9 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
    ./manage.sh start
    ```
    
-   Or manually with Podman Compose:
+   Or manually with Docker Compose:
    ```bash
-   podman compose up --build
+   docker compose up --build
    ```
 
 4. **Access the application:**
@@ -132,7 +132,7 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 ## 📚 Documentation
 
 - **[Production Deployment Guide](PRODUCTION_DEPLOYMENT.md)** - Complete production deployment checklist and guide
-- **[Podman Development Guide](PODMAN.md)** - Complete Podman setup and workflow
+- **[Docker Development Guide](DOCKER.md)** - Complete Docker setup and workflow
 - **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details (public site)
 - **[Admin Panel README](admin-panel/README.md)** - Next.js 15.3.5 admin panel details (CMS interface)  
 - **[Backend README](backend/README.md)** - Go 1.24 backend documentation
@@ -154,9 +154,9 @@ Use the included `manage.sh` script for easier production management:
 ./manage.sh help      # Show all commands
 ```
 
-## Podman Architecture
+## Docker Architecture
 
-WebEnable CMS uses a multi-container Podman setup for production:
+WebEnable CMS uses a multi-container Docker setup for production:
 
 ### Services
 
@@ -171,7 +171,7 @@ WebEnable CMS uses a multi-container Podman setup for production:
 
 ### Container Features
 
-- **Production Optimized**: Containerized builds with multi-stage Podmanfiles
+- **Production Optimized**: Containerized builds with multi-stage Dockerfiles
 - **Resource Limits**: CPU and memory limits for stable operation
 - **Health Checks**: Automated service health monitoring
 - **Auto Restart**: Services restart automatically on failure
@@ -190,16 +190,16 @@ Client ←→ Caddy (80/443/5984) ←→ Frontend (3000) / Admin Panel (3001) �
 - `/admin*` routes → Admin Panel (port 3001)
 - All other routes → Frontend (port 3000)
 
-All services communicate through Podman's internal network with only Caddy exposed to the host.
+All services communicate through Docker's internal network with only Caddy exposed to the host.
 
 ## Project Structure
 
 ```
-├── podman-compose.yml          # Podman Compose configuration
+├── docker-compose.yml          # Docker Compose configuration
 ├── caddy/                      # Caddy reverse proxy configuration
 │   └── Caddyfile              # Caddy configuration file
 ├── backend/                    # Go backend application
-│   ├── Containerfile          # Backend Podman configuration
+│   ├── Dockerfile          # Backend Docker configuration
 │   ├── .air.toml              # Air live reload configuration
 │   ├── main.go                # Main application entry point
 │   ├── go.mod                 # Go module dependencies
@@ -214,7 +214,7 @@ All services communicate through Podman's internal network with only Caddy expos
 │   └── middleware/            # HTTP middleware
 │       └── auth.go            # JWT authentication middleware
 ├── frontend/                  # Next.js frontend application (public site)
-│   ├── Containerfile          # Frontend Podman configuration
+│   ├── Dockerfile          # Frontend Docker configuration
 │   ├── package.json           # Node.js dependencies
 │   ├── next.config.js         # Next.js configuration
 │   ├── tailwind.config.js     # Tailwind CSS configuration
@@ -237,7 +237,7 @@ All services communicate through Podman's internal network with only Caddy expos
 │   └── lib/                   # Utility libraries
 │       └── api.ts             # API client configuration
 └── admin-panel/               # Next.js admin panel application (CMS)
-    ├── Containerfile          # Admin panel Podman configuration
+    ├── Dockerfile          # Admin panel Docker configuration
     ├── package.json           # Node.js dependencies
     ├── next.config.js         # Next.js configuration
     ├── app/                   # Next.js App Router (admin routes)

@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Development environment (Podman)
-echo "🚀 Starting development environment with Podman..."
+# Development environment (Docker)
+echo "🚀 Starting development environment with Docker..."
 
 export NODE_ENV=development
 export GO_ENV=development
 
 # Build images if they don't exist
-podman compose build --parallel
+docker compose build --parallel
 
 # Start services
-podman compose up -d
+docker compose up -d
 
 echo "✅ Development environment started!"
 echo "📱 Frontend: http://localhost:3000"
@@ -19,4 +19,4 @@ echo "🗄️  CouchDB: http://localhost:5984"
 echo "💾 Valkey: localhost:6379"
 
 # Show logs
-podman compose logs -f
+docker compose logs -f

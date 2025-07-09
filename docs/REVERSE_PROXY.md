@@ -47,7 +47,7 @@ This CMS uses Caddy as a comprehensive reverse proxy for all HTTP-based services
 - **Key Features**: Multi-service routing, security headers, compression
 
 ### Docker Compose
-- **File**: `podman-compose.yml`
+- **File**: `docker-compose.yml`
 - **Ports Exposed**: 80 (HTTP), 443 (HTTPS), 5984 (Database)
 - **Dependencies**: Frontend, Backend, Database services
 
@@ -88,7 +88,7 @@ docker logs cms-caddy-1
 
 1. **Database Connection Refused**
    - Check if CouchDB container is running
-   - Verify port 5984 is exposed in podman-compose.yml
+   - Verify port 5984 is exposed in docker-compose.yml
 
 2. **Security Headers Missing**
    - Restart Caddy container to reload configuration

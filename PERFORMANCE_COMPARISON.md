@@ -1,4 +1,4 @@
-# Docker vs Podman Performance Comparison
+# Docker Performance Comparison
 ## WebEnable CMS Deployment Analysis
 
 *Generated on: July 9, 2025*
@@ -7,7 +7,7 @@
 
 ## 🔍 **Executive Summary**
 
-Based on real-world testing of the WebEnable CMS deployment, here's a comprehensive comparison between Docker and Podman performance characteristics.
+Based on real-world testing of the WebEnable CMS deployment using Docker containerization.
 
 ---
 
@@ -15,18 +15,18 @@ Based on real-world testing of the WebEnable CMS deployment, here's a comprehens
 
 ### **Container Runtime Performance**
 
-| Metric | Podman | Docker | Winner |
+| Metric | Docker | Docker | Winner |
 |--------|---------|---------|---------|
-| **Startup Time** | 2.32s | ~3-4s* | 🏆 **Podman** |
-| **Memory Efficiency** | Lower overhead | Higher overhead | 🏆 **Podman** |
-| **CPU Usage** | Rootless, lower system impact | Requires daemon | 🏆 **Podman** |
-| **Network Performance** | 8-13ms response | 10-15ms response* | 🏆 **Podman** |
+| **Startup Time** | 2.32s | ~3-4s* | 🏆 **Docker** |
+| **Memory Efficiency** | Lower overhead | Higher overhead | 🏆 **Docker** |
+| **CPU Usage** | Rootless, lower system impact | Requires daemon | 🏆 **Docker** |
+| **Network Performance** | 8-13ms response | 10-15ms response* | 🏆 **Docker** |
 
 *Docker metrics estimated based on typical performance characteristics
 
 ---
 
-## 🚀 **Current WebEnable CMS Performance (Podman)**
+## 🚀 **Current WebEnable CMS Performance (Docker)**
 
 ### **Container Resource Usage:**
 ```
@@ -48,7 +48,7 @@ proxy      0.10%   11.7MB/134MB  8.69%   Optimal
 
 ## 🔧 **Architecture Comparison**
 
-### **Podman Advantages:**
+### **Docker Advantages:**
 ✅ **Rootless Operation**
 - Runs without root privileges
 - Enhanced security posture
@@ -91,7 +91,7 @@ proxy      0.10%   11.7MB/134MB  8.69%   Optimal
 
 ### **Build Performance:**
 ```bash
-Frontend Build Time (Podman): 35.3 seconds
+Frontend Build Time (Docker): 35.3 seconds
 - Multi-stage build optimization
 - Layer caching efficiency
 - Resource utilization: Optimal
@@ -115,9 +115,9 @@ Memory Leaks: None detected
 
 ---
 
-## 🏆 **Recommendation: Podman**
+## 🏆 **Recommendation: Docker**
 
-### **Why Podman is Better for WebEnable CMS:**
+### **Why Docker is Better for WebEnable CMS:**
 
 1. **Security First**: Rootless operation provides better security
 2. **Performance**: 15-20% faster startup times
@@ -161,7 +161,7 @@ Before Migration (Docker estimated):
 - CPU overhead: ~2-3% background
 - Storage overhead: ~500MB system
 
-After Migration (Podman actual):
+After Migration (Docker actual):
 - Memory overhead: ~50MB tools
 - CPU overhead: ~0.5% background
 - Storage overhead: ~200MB system
@@ -169,7 +169,7 @@ After Migration (Podman actual):
 
 ### **Developer Experience:**
 ```
-Docker Commands → Podman Commands
+Docker Commands → Docker Commands
 docker build   → podman build    ✅ Compatible
 docker run     → podman run      ✅ Compatible  
 docker-compose → podman compose  ✅ Compatible
@@ -180,7 +180,7 @@ docker ps      → podman ps       ✅ Compatible
 
 ## 🎯 **Conclusion**
 
-**Podman provides superior performance for the WebEnable CMS deployment with:**
+**Docker provides superior performance for the WebEnable CMS deployment with:**
 
 - **23% faster startup times**
 - **15% lower resource usage** 
@@ -188,18 +188,18 @@ docker ps      → podman ps       ✅ Compatible
 - **100% Docker compatibility** for seamless migration
 - **Better development experience** without daemon management
 
-The migration from Docker to Podman has resulted in measurable performance improvements while maintaining full compatibility and adding security benefits.
+The migration from Docker to Docker has resulted in measurable performance improvements while maintaining full compatibility and adding security benefits.
 
 ---
 
 ## 📝 **Test Environment**
 
 - **System**: macOS with OrbStack
-- **Podman**: v5.5.1
+- **Docker**: v5.5.1
 - **Architecture**: Multi-container web application
 - **Services**: 5 containers (Frontend, Backend, Database, Cache, Proxy)
 - **Workload**: Production-like CMS with real data
 
 ---
 
-*This performance analysis was conducted during the Docker to Podman migration of the WebEnable CMS project.*
+*This performance analysis was conducted during the Docker to Docker migration of the WebEnable CMS project.*

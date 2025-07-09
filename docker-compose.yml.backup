@@ -4,8 +4,8 @@ services:
     image: couchdb:3
     restart: unless-stopped
     environment:
-      COUCHDB_USER: ${COUCHDB_USER:-admin}
-      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: RaZq6U7/BM4AbgcjQBJscAYQDZr47MOp
     volumes:
       - couchdb_data:/opt/couchdb/data
     networks:
@@ -45,7 +45,7 @@ services:
   backend:
     build: 
       context: ./backend
-      dockerfile: Containerfile
+      dockerfile: Dockerfile
       args:
         GO_ENV: production
       target: final
@@ -57,7 +57,7 @@ services:
     env_file:
       - .env
     environment:
-      - COUCHDB_URL=http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@db:5984/
+      - COUCHDB_URL=http://admin:RaZq6U7/BM4AbgcjQBJscAYQDZr47MOp@db:5984/
       - VALKEY_URL=redis://:${VALKEY_PASSWORD}@cache:6379
       - GIN_MODE=release
       - JWT_SECRET=${JWT_SECRET}
@@ -92,7 +92,7 @@ services:
   frontend:
     build: 
       context: ./frontend
-      dockerfile: Containerfile
+      dockerfile: Dockerfile
       args:
         NODE_ENV: production
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
@@ -136,7 +136,7 @@ services:
   admin-panel:
     build: 
       context: ./admin-panel
-      dockerfile: Containerfile
+      dockerfile: Dockerfile
       args:
         NODE_ENV: production
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
@@ -180,7 +180,7 @@ services:
   caddy:
     build:
       context: ./caddy
-      dockerfile: Containerfile
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       - "443:443"

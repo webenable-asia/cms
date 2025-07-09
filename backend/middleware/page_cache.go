@@ -49,8 +49,16 @@ func NewPageCache(valkeyClient *cache.ValkeyClient) *PageCacheConfig {
 		ValkeyClient:    valkeyClient,
 		DefaultTTL:      15 * time.Minute, // Default 15 minutes
 		SkipMethods:     []string{"POST", "PUT", "DELETE", "PATCH"},
-		SkipPaths:       []string{"/api/auth/", "/api/users/", "/swagger/"},
-		SkipQueryParams: []string{"_", "timestamp", "nocache"},
+		SkipPaths:       []string{
+			"/api/auth/", 
+			"/api/users/", 
+			"/api/contacts/",
+			"/api/posts",            // Skip posts API for real-time updates (both /api/posts and /api/posts/)
+			"/api/admin/",           // Skip all admin API routes
+			"/admin/",               // Skip admin panel routes
+			"/swagger/",
+		},
+		SkipQueryParams: []string{"_", "timestamp", "nocache", "admin", "_t"},
 		CachePrivate:    false, // Don't cache authenticated requests by default
 	}
 }
@@ -94,6 +102,11 @@ func (pc *PageCacheConfig) generateCacheKey(r *http.Request) string {
 
 // shouldCache determines if a request should be cached
 func (pc *PageCacheConfig) shouldCache(r *http.Request) bool {
+	// NEVER cache any admin-related requests
+	if pc.isAdminRequest(r) {
+		return false
+	}
+
 	// Skip non-GET requests by default
 	for _, method := range pc.SkipMethods {
 		if r.Method == method {
@@ -101,11 +114,16 @@ func (pc *PageCacheConfig) shouldCache(r *http.Request) bool {
 		}
 	}
 
-	// Skip certain paths
+	// Skip certain paths - be more specific about API route exclusions
 	for _, path := range pc.SkipPaths {
 		if strings.HasPrefix(r.URL.Path, path) {
 			return false
 		}
+	}
+	
+	// Explicitly skip posts API for real-time updates  
+	if r.URL.Path == "/api/posts" {
+		return false
 	}
 
 	// Skip if authenticated and not caching private responses
@@ -126,6 +144,40 @@ func (pc *PageCacheConfig) shouldCache(r *http.Request) bool {
 	}
 
 	return true
+}
+
+// isAdminRequest checks if a request is admin-related and should never be cached
+func (pc *PageCacheConfig) isAdminRequest(r *http.Request) bool {
+	path := r.URL.Path
+	referer := r.Header.Get("Referer")
+	
+	// Check if it's an admin route
+	if strings.HasPrefix(path, "/admin/") || 
+	   strings.HasPrefix(path, "/api/admin/") ||
+	   strings.HasPrefix(path, "/api/users/") ||
+	   strings.HasPrefix(path, "/api/contacts/") {
+		return true
+	}
+	
+	// Check if request comes from admin panel
+	if strings.Contains(referer, "/admin") {
+		return true
+	}
+	
+	// Check for admin-related query parameters
+	if r.URL.Query().Get("admin") != "" {
+		return true
+	}
+	
+	// Check if it's an authenticated admin user
+	if claims, ok := r.Context().Value("user").(*Claims); ok {
+		// If user context exists, it's likely an admin operation
+		// You can add role checking here if you have user roles
+		_ = claims // Use claims if you have role-based access
+		return true // For now, skip caching for all authenticated users
+	}
+	
+	return false
 }
 
 // shouldCacheResponse determines if a response should be cached based on status code

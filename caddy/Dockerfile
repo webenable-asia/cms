@@ -1,5 +1,5 @@
 # Caddy 2 for WebEnable CMS
-FROM caddy:2-alpine
+FROM docker.io/caddy:2-alpine
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

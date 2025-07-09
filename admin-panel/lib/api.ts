@@ -26,13 +26,34 @@ export const tokenManager = {
     authToken = token
     if (typeof window !== 'undefined') {
       localStorage.setItem('webenable_token', token)
+      // Also set an expiry timestamp for automatic cleanup
+      const expiryTime = Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+      localStorage.setItem('webenable_token_expiry', expiryTime.toString())
     }
   },
   
   getToken: (): string | null => {
-    if (authToken) return authToken
+    if (authToken) {
+      // Check if token is expired
+      if (typeof window !== 'undefined') {
+        const expiry = localStorage.getItem('webenable_token_expiry')
+        if (expiry && Date.now() > parseInt(expiry)) {
+          // Token expired, remove it
+          tokenManager.removeToken()
+          return null
+        }
+      }
+      return authToken
+    }
+    
     if (typeof window !== 'undefined') {
       authToken = localStorage.getItem('webenable_token')
+      // Check expiry for stored token too
+      const expiry = localStorage.getItem('webenable_token_expiry')
+      if (expiry && Date.now() > parseInt(expiry)) {
+        tokenManager.removeToken()
+        return null
+      }
     }
     return authToken
   },
@@ -41,7 +62,22 @@ export const tokenManager = {
     authToken = null
     if (typeof window !== 'undefined') {
       localStorage.removeItem('webenable_token')
+      localStorage.removeItem('webenable_token_expiry')
+      // Clear any other admin-related localStorage items
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('webenable_') || key.startsWith('admin_'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
     }
+  },
+  
+  isTokenValid: (): boolean => {
+    const token = tokenManager.getToken()
+    return !!token
   }
 }
 
@@ -55,6 +91,9 @@ async function apiRequest<T>(
   const token = tokenManager.getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     ...(options.headers as Record<string, string>),
   }
   
@@ -88,7 +127,9 @@ async function apiRequest<T>(
 export const postsApi = {
   // Get all posts with optional status filter
   getAll: async (status?: string): Promise<Post[]> => {
-    const query = status ? `?status=${status}` : ''
+    // Add cache-busting parameter to ensure fresh data
+    const cacheBuster = `_t=${Date.now()}`
+    const query = status ? `?status=${status}&${cacheBuster}` : `?${cacheBuster}`
     const result = await apiRequest<{ data: Post[]; meta: any }>(`/posts${query}`)
     return result?.data || []
   },
@@ -140,7 +181,9 @@ export const contactApi = {
 
   // Get all contacts (requires auth)
   getAll: async (): Promise<Contact[]> => {
-    const result = await apiRequest<{ data: Contact[]; meta: any }>('/contacts')
+    // Add cache-busting parameter to ensure fresh data
+    const cacheBuster = `?_t=${Date.now()}`
+    const result = await apiRequest<{ data: Contact[]; meta: any }>(`/contacts${cacheBuster}`)
     return result?.data || []
   },
 

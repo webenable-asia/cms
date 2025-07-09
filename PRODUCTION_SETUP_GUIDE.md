@@ -7,7 +7,7 @@
 
 ## 🎯 **Overview**
 
-This guide provides complete step-by-step instructions for deploying WebEnable CMS to production using Podman (recommended) or Docker. The setup includes security hardening, performance optimization, and monitoring.
+This guide provides complete step-by-step instructions for deploying WebEnable CMS to production using Docker (recommended) or Docker. The setup includes security hardening, performance optimization, and monitoring.
 
 ---
 
@@ -86,21 +86,21 @@ sudo systemctl restart fail2ban
 
 ## 🐳 **Step 2: Container Runtime Installation**
 
-### **Option A: Podman Installation (Recommended)**
+### **Option A: Docker Installation (Recommended)**
 
-#### **2A.1 Install Podman**
+#### **2A.1 Install Docker**
 ```bash
 # Ubuntu 22.04+
-sudo apt install -y podman podman-compose
+sudo apt install -y docker docker-compose
 
 # CentOS/RHEL 8+
-sudo dnf install -y podman podman-compose
+sudo dnf install -y docker docker-compose
 
 # Verify installation
-podman --version
+docker --version
 ```
 
-#### **2A.2 Configure Podman**
+#### **2A.2 Configure Docker**
 ```bash
 # Enable lingering for current user
 sudo loginctl enable-linger $USER
@@ -348,17 +348,17 @@ api.yourdomain.com:5984 {
 
 ### **5.1 Build and Start Services**
 ```bash
-# Using Podman (Recommended)
+# Using Docker (Recommended)
 cd /home/webenable/webenable-asia
 
 # Build images
-podman compose build
+docker compose build
 
 # Start services
-podman compose up -d
+docker compose up -d
 
 # Verify all services are running
-podman compose ps
+docker compose ps
 ```
 
 ### **5.2 Initialize Database**
@@ -366,12 +366,165 @@ podman compose ps
 # Wait for services to be ready (30 seconds)
 sleep 30
 
-# Initialize admin user
-cd backend
-go run ./scripts/init_admin.go
+### **5.2 Initialize Database**
+```bash
+# Wait for services to be ready (30 seconds)
+sleep 30
 
-# Populate sample data (optional)
-go run ../scripts/populate_database.go
+# Method 1: Create admin user with dedicated script (Recommended)
+# Use the comprehensive admin user creation script
+./create_admin_user.sh
+
+# If the script doesn't exist, create it first:
+if [ ! -f create_admin_user.sh ]; then
+    echo "📥 Creating admin user setup script..."
+    cat > create_admin_user.sh << 'ADMIN_SCRIPT_EOF'
+#!/bin/bash
+
+# WebEnable CMS - Create Admin User Script
+set -e  # Exit on any error
+
+echo "🚀 Creating fresh admin user for WebEnable CMS..."
+
+# Load environment variables
+if [ -f .env ]; then
+    COUCHDB_PASSWORD=$(grep "^COUCHDB_PASSWORD=" .env | cut -d '=' -f2)
+    if [ -z "$COUCHDB_PASSWORD" ]; then
+        echo "❌ Error: COUCHDB_PASSWORD not found in .env file"
+        exit 1
+    fi
+    echo "✅ Loaded CouchDB password from .env"
+else
+    echo "❌ Error: .env file not found"
+    exit 1
+fi
+
+# Check CouchDB connectivity
+echo "🔍 Testing CouchDB connection..."
+if ! curl -s -f "http://admin:${COUCHDB_PASSWORD}@localhost:5984" > /dev/null; then
+    echo "❌ Error: Cannot connect to CouchDB"
+    exit 1
+fi
+echo "✅ CouchDB is accessible"
+
+echo "🧹 Cleaning up existing admin users..."
+EXISTING_ADMINS=$(curl -s "http://admin:${COUCHDB_PASSWORD}@localhost:5984/users/_all_docs?include_docs=true" | jq -r '.rows[] | select(.doc.username == "admin") | "\(.id),\(.doc._rev)"' 2>/dev/null || echo "")
+
+if [ -n "$EXISTING_ADMINS" ]; then
+    echo "$EXISTING_ADMINS" | while IFS=',' read -r id rev; do
+        if [ -n "$id" ] && [ -n "$rev" ]; then
+            curl -s -X DELETE "http://admin:${COUCHDB_PASSWORD}@localhost:5984/users/$id?rev=$rev" > /dev/null || true
+        fi
+    done
+    echo "✅ Cleaned up existing admin users"
+fi
+
+echo "🔐 Generating secure password hash..."
+cat > temp_hash_generator.go << 'HASH_EOF'
+package main
+import (
+	"fmt"
+	"golang.org/x/crypto/bcrypt"
+	"os"
+)
+func main() {
+	if len(os.Args) < 2 {
+		os.Exit(1)
+	}
+	password := os.Args[1]
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Print(string(hash))
+}
+HASH_EOF
+
+BCRYPT_HASH=$(cd backend && go run ../temp_hash_generator.go "admin123" 2>/dev/null)
+rm -f temp_hash_generator.go
+
+ADMIN_USER_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+CREATE_RESPONSE=$(curl -s -X POST "http://admin:${COUCHDB_PASSWORD}@localhost:5984/users" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"_id\": \"$ADMIN_USER_ID\",
+    \"username\": \"admin\",
+    \"email\": \"admin@webenable.asia\",
+    \"password_hash\": \"$BCRYPT_HASH\",
+    \"role\": \"admin\",
+    \"active\": true,
+    \"created_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+  }")
+
+if echo "$CREATE_RESPONSE" | jq -e '.ok' > /dev/null 2>&1; then
+    echo "✅ Admin user created successfully"
+    echo "👤 Username: admin"
+    echo "🔑 Password: admin123"
+    echo "🔗 Admin Panel: http://localhost/admin"
+    
+    # Test login
+    sleep 2
+    LOGIN_RESPONSE=$(curl -s -X POST "http://localhost/api/auth/login" \
+      -H "Content-Type: application/json" \
+      -d '{"username": "admin", "password": "admin123"}')
+    
+    if echo "$LOGIN_RESPONSE" | jq -e '.token' > /dev/null 2>&1; then
+        echo "🎉 Admin login test successful!"
+    else
+        echo "⚠️  User created but login test failed. Try manual login."
+    fi
+else
+    echo "❌ Error creating admin user: $CREATE_RESPONSE"
+    exit 1
+fi
+ADMIN_SCRIPT_EOF
+
+    chmod +x create_admin_user.sh
+    echo "✅ Admin user script created"
+fi
+
+echo "🔧 Running admin user creation..."
+./create_admin_user.sh
+
+# Method 2: Populate with sample data (Optional)
+# Create sample blog posts and contacts for demonstration
+cat > populate_sample_data.sh << 'POPULATE_EOF'
+#!/bin/bash
+DB_URL="http://admin:${COUCHDB_PASSWORD}@localhost:5984"
+echo "🚀 Creating sample content..."
+
+# Create welcome post
+POST_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+curl -X POST "$DB_URL/posts" -H "Content-Type: application/json" -d "{
+  \"_id\": \"$POST_ID\",
+  \"title\": \"Welcome to WebEnable CMS\",
+  \"content\": \"<h1>Welcome!</h1><p>Your CMS is ready. Start creating amazing content!</p>\",
+  \"excerpt\": \"Welcome to your new CMS installation.\",
+  \"author\": \"admin\",
+  \"status\": \"published\",
+  \"tags\": [\"welcome\"],
+  \"categories\": [\"General\"],
+  \"is_featured\": true,
+  \"created_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+  \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+  \"published_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+}"
+echo "✅ Sample data created!"
+POPULATE_EOF
+
+chmod +x populate_sample_data.sh
+./populate_sample_data.sh
+
+# Method 3: Populate sample contacts (Optional)
+# Run the included script to populate contact form submissions
+if [ -f populate_contacts.sh ]; then
+    echo "📞 Populating sample contacts..."
+    ./populate_contacts.sh
+else
+    echo "⚠️  populate_contacts.sh not found - skipping contact population"
+fi
+```
 ```
 
 ### **5.3 Verify Deployment**
@@ -382,8 +535,22 @@ curl -f http://localhost/api/health
 # Check frontend
 curl -f http://localhost/
 
-# Check logs
-podman compose logs --tail=50
+# Run comprehensive admin login troubleshooting
+./troubleshoot_admin.sh
+
+# Check logs if needed
+docker compose logs --tail=50
+```
+
+### **5.4 Quick Admin Access Test**
+```bash
+# Test admin login via API
+curl -X POST "http://localhost/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}' | jq '.'
+
+# Expected response should include a JWT token and user details
+# If you get "Invalid credentials", run: ./create_admin_user.sh
 ```
 
 ---
@@ -466,9 +633,9 @@ Type=forking
 User=webenable
 Group=webenable
 WorkingDirectory=/home/webenable/webenable-asia
-ExecStart=/usr/bin/podman compose up -d
-ExecStop=/usr/bin/podman compose down
-ExecReload=/usr/bin/podman compose restart
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+ExecReload=/usr/bin/docker compose restart
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -532,7 +699,7 @@ sudo systemctl enable --now dnf-automatic.timer
 ## 📈 **Step 9: Performance Optimization**
 
 ### **9.1 Optimize Container Resources**
-Update `podman-compose.yml` with production resource limits:
+Update `docker-compose.yml` with production resource limits:
 
 ```yaml
 services:
@@ -612,10 +779,10 @@ CONTAINER_NAME="webenable-asia-db-1"
 mkdir -p "$BACKUP_DIR"
 
 # Backup CouchDB
-podman exec "$CONTAINER_NAME" curl -X GET http://admin:YOUR_DB_PASSWORD@localhost:5984/_all_dbs | \
+docker exec "$CONTAINER_NAME" curl -X GET http://admin:YOUR_DB_PASSWORD@localhost:5984/_all_dbs | \
     jq -r '.[]' | while read db; do
     echo "Backing up database: $db"
-    podman exec "$CONTAINER_NAME" curl -X GET \
+    docker exec "$CONTAINER_NAME" curl -X GET \
         "http://admin:YOUR_DB_PASSWORD@localhost:5984/$db/_all_docs?include_docs=true" \
         > "$BACKUP_DIR/${db}_${DATE}.json"
 done
@@ -748,13 +915,37 @@ curl -f https://yourdomain.com/admin
 
 ### **Common Issues and Solutions:**
 
+#### **Admin Authentication Issues**
+```bash
+# If you get "Invalid credentials" error:
+
+# Step 1: Run the troubleshooting script
+./troubleshoot_admin.sh
+
+# Step 2: If admin user doesn't exist, create one
+./create_admin_user.sh
+
+# Step 3: If scripts don't exist, download them
+wget https://raw.githubusercontent.com/your-org/webenable-asia/main/create_admin_user.sh
+wget https://raw.githubusercontent.com/your-org/webenable-asia/main/troubleshoot_admin.sh
+chmod +x create_admin_user.sh troubleshoot_admin.sh
+
+# Step 4: Test login manually
+curl -X POST "http://localhost/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Step 5: Clear browser cache and cookies if using web interface
+# Then navigate to: http://localhost/admin
+```
+
 #### **Service Won't Start**
 ```bash
 # Check service status
 systemctl status webenable-cms
 
 # Check container logs
-podman compose logs
+docker compose logs
 
 # Check system resources
 free -h
@@ -764,10 +955,10 @@ df -h
 #### **Database Connection Issues**
 ```bash
 # Test database connectivity
-podman exec webenable-asia-db-1 curl http://localhost:5984
+docker exec webenable-asia-db-1 curl http://localhost:5984
 
 # Check database logs
-podman logs webenable-asia-db-1
+docker logs webenable-asia-db-1
 ```
 
 #### **SSL Certificate Issues**
@@ -782,7 +973,7 @@ sudo certbot renew --force-renewal
 #### **Performance Issues**
 ```bash
 # Check container resources
-podman stats
+docker stats
 
 # Check system load
 top
@@ -811,8 +1002,8 @@ cd /home/webenable/webenable-asia
 git pull origin main
 
 # 3. Rebuild and restart
-podman compose build
-podman compose up -d
+docker compose build
+docker compose up -d
 
 # 4. Verify deployment
 curl -f https://yourdomain.com/api/health
@@ -822,7 +1013,7 @@ curl -f https://yourdomain.com/api/health
 
 ## 📚 **Additional Resources**
 
-- **Podman Documentation**: https://docs.podman.io/
+- **Docker Documentation**: https://docs.docker.io/
 - **Caddy Documentation**: https://caddyserver.com/docs/
 - **CouchDB Documentation**: https://docs.couchdb.org/
 - **Security Best Practices**: https://owasp.org/www-project-top-ten/
