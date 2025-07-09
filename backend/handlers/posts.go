@@ -36,14 +36,14 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 	// Get pagination parameters
 	page, limit := getPaginationParams(r)
 
-	// Get status filter from query parameters
+	// Get status filter from query parameters, default to "published" for public access
 	statusFilter := r.URL.Query().Get("status")
+	if statusFilter == "" {
+		statusFilter = "published"
+	}
 
 	// Create cache key based on query parameters
-	cacheKey := fmt.Sprintf("posts_list_page_%d_limit_%d", page, limit)
-	if statusFilter != "" {
-		cacheKey = fmt.Sprintf("posts_list_status_%s_page_%d_limit_%d", statusFilter, page, limit)
-	}
+	cacheKey := fmt.Sprintf("posts_list_status_%s_page_%d_limit_%d", statusFilter, page, limit)
 
 	// Try to get from cache first
 	if globalCache != nil {
@@ -75,8 +75,8 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 			post.Rev = rev
 		}
 
-		// Filter by status if specified
-		if statusFilter != "" && post.Status != statusFilter {
+		// Filter by status (now always applied, defaults to "published")
+		if post.Status != statusFilter {
 			continue
 		}
 
@@ -163,6 +163,12 @@ func GetPost(w http.ResponseWriter, r *http.Request) {
 
 	var post models.Post
 	if err := row.ScanDoc(&post); err != nil {
+		http.Error(w, "Post not found", http.StatusNotFound)
+		return
+	}
+
+	// Only return published posts for public access
+	if post.Status != "published" {
 		http.Error(w, "Post not found", http.StatusNotFound)
 		return
 	}
