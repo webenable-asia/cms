@@ -185,45 +185,14 @@ export function useLogout() {
   return useMutation(() => authApi.logout())
 }
 
-// User Management hooks
-export function useUsers() {
-  return useApiCall(() => usersApi.getAll())
+// User Management hooks - Profile only (admin functionality in admin-panel)
+export function useUserProfile() {
+  return useApiCall(() => usersApi.getProfile())
 }
 
-export function useUser(id: string) {
-  return useApiCall(
-    () => id ? usersApi.getById(id) : Promise.resolve(null),
-    [id]
-  )
-}
-
-export function useUserStats() {
-  return useApiCall(() => usersApi.getStats())
-}
-
-export function useCreateUser() {
-  return useMutation((userData: {
-    username: string
-    email: string
-    password: string
-    role: string
-    active: boolean
-  }) => usersApi.create(userData))
-}
-
-export function useUpdateUser() {
-  return useMutation(({ id, updates }: {
-    id: string
-    updates: {
-      username?: string
-      email?: string
-      password?: string
-      role?: string
-      active?: boolean
-    }
-  }) => usersApi.update(id, updates))
-}
-
-export function useDeleteUser() {
-  return useMutation((id: string) => usersApi.delete(id))
+export function useUpdateUserProfile() {
+  return useMutation((updates: {
+    username?: string
+    email?: string
+  }) => usersApi.updateProfile(updates))
 }

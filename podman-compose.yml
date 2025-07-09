@@ -1,0 +1,236 @@
+
+services:
+  db:
+    image: couchdb:3
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    networks:
+      - cms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  cache:
+    image: docker.io/valkey/valkey:alpine3.22
+    restart: unless-stopped
+    command: valkey-server --requirepass ${VALKEY_PASSWORD} --appendonly yes --save 60 1 --tcp-keepalive 300 --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - valkey_data:/data
+    networks:
+      - cms_network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Containerfile
+      args:
+        GO_ENV: production
+      target: final
+    depends_on:
+      cache:
+        condition: service_healthy
+      db:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - COUCHDB_URL=http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@db:5984/
+      - VALKEY_URL=redis://:${VALKEY_PASSWORD}@cache:6379
+      - GIN_MODE=release
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SESSION_DOMAIN=${SESSION_DOMAIN}
+      - SESSION_SECURE=${SESSION_SECURE}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    networks:
+      - cms_network
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
+          ignore:
+            - ./backend/main
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - ./backend/main
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+      replicas: 1
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Containerfile
+      args:
+        NODE_ENV: production
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        BACKEND_URL: http://backend:8080
+      target: final
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - BACKEND_URL=http://backend:8080
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - cms_network
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./frontend
+          ignore:
+            - ./frontend/node_modules
+            - ./frontend/.next
+        - action: sync
+          path: ./frontend/package.json
+          target: /app/package.json
+        - action: sync
+          path: ./frontend/pnpm-lock.yaml
+          target: /app/pnpm-lock.yaml
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      replicas: 1
+
+  admin-panel:
+    build: 
+      context: ./admin-panel
+      dockerfile: Containerfile
+      args:
+        NODE_ENV: production
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        BACKEND_URL: http://backend:8080
+      target: final
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - BACKEND_URL=http://backend:8080
+      - NODE_ENV=production
+      - PORT=3001
+    networks:
+      - cms_network
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./admin-panel
+          ignore:
+            - ./admin-panel/node_modules
+            - ./admin-panel/.next
+        - action: sync
+          path: ./admin-panel/package.json
+          target: /app/package.json
+        - action: sync
+          path: ./admin-panel/pnpm-lock.yaml
+          target: /app/pnpm-lock.yaml
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      replicas: 1
+
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Containerfile
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5984:5984"  # CouchDB proxy
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - admin-panel
+      - backend
+      - db
+      - cache
+    networks:
+      - cms_network
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./caddy/Caddyfile
+          target: /etc/caddy/Caddyfile
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+
+volumes:
+  couchdb_data:
+    driver: local
+  valkey_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  cms_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

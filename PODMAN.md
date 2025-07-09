@@ -196,10 +196,10 @@ podman run --rm -v webenable-cms_couchdb_data:/data -v $(pwd):/backup alpine tar
 
 ### Configuration Files
 
-- **Podman Compose**: `docker-compose.yml`
+- **Podman Compose**: `podman-compose.yml`
 - **Environment Template**: `.env.example`
-- **Frontend Dockerfile**: `frontend/Dockerfile`
-- **Backend Dockerfile**: `backend/Dockerfile`
+- **Frontend Containerfile**: `frontend/Containerfile`
+- **Backend Containerfile**: `backend/Containerfile`
 
 ### Key Variables
 
@@ -222,7 +222,7 @@ CORS_ORIGINS=http://localhost:3000,http://frontend:3000
 
 ### Build Optimization
 
-- **Layer Caching**: Dockerfile layers optimized for caching
+- **Layer Caching**: Containerfile layers optimized for caching
 - **Multi-stage Builds**: Separate build and runtime stages
 - **Ignore Files**: `.dockerignore` excludes unnecessary files
 
@@ -273,17 +273,17 @@ podman compose up frontend --build
 
 ```bash
 # Create production images
-podman compose -f docker-compose.prod.yml build
+podman compose -f podman-compose.yml build
 
 # Deploy to registry
-podman compose -f docker-compose.prod.yml push
+podman compose -f podman-compose.yml push
 ```
 
 ### Environment-Specific Configs
 
-- **Development**: `docker-compose.yml`
-- **Production**: `docker-compose.prod.yml`
-- **Testing**: `docker-compose.test.yml`
+- **Development**: `podman-compose.yml`
+- **Production**: `podman-compose.yml`
+- **Testing**: `podman-compose.yml`
 
 ## Podman vs Docker Differences
 
@@ -299,7 +299,7 @@ podman compose -f docker-compose.prod.yml push
 
 - Commands are largely compatible (drop-in replacement)
 - Volume and network handling is similar
-- All existing Dockerfiles work without modification
+- All existing Containerfiles work without modification
 - `podman compose` replaces `docker-compose`
 
 ---

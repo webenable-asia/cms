@@ -532,7 +532,7 @@ sudo systemctl enable --now dnf-automatic.timer
 ## 📈 **Step 9: Performance Optimization**
 
 ### **9.1 Optimize Container Resources**
-Update `docker-compose.yml` with production resource limits:
+Update `podman-compose.yml` with production resource limits:
 
 ```yaml
 services:

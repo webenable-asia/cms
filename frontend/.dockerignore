@@ -5,6 +5,7 @@ node_modules
 .gitignore
 README.md
 Dockerfile
+Containerfile
 .dockerignore
 
 # Logs

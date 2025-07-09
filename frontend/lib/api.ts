@@ -208,64 +208,29 @@ export const authApi = {
   },
 }
 
-// User Management API
+// User Management API - Basic user operations only
+// Admin user management moved to admin-panel service
 export const usersApi = {
-  // Get all users (admin only)
-  getAll: async (): Promise<User[]> => {
-    const result = await apiRequest<{ data: User[]; meta: any }>('/users')
-    return result?.data || []
+  // Get current user profile
+  getProfile: async (): Promise<User | null> => {
+    try {
+      const result = await apiRequest<User>('/users/profile')
+      return result
+    } catch (error) {
+      console.error('Failed to get user profile:', error)
+      return null
+    }
   },
 
-  // Get single user by ID (admin only)
-  getById: (id: string): Promise<User> => {
-    return apiRequest<User>(`/users/${id}`)
-  },
-
-  // Create new user (admin only)
-  create: (user: {
-    username: string
-    email: string
-    password: string
-    role: string
-    active: boolean
-  }): Promise<User> => {
-    return apiRequest<User>('/users', {
-      method: 'POST',
-      body: JSON.stringify(user),
-    })
-  },
-
-  // Update user (admin only)
-  update: (id: string, updates: {
+  // Update current user profile
+  updateProfile: (updates: {
     username?: string
     email?: string
-    password?: string
-    role?: string
-    active?: boolean
   }): Promise<User> => {
-    return apiRequest<User>(`/users/${id}`, {
+    return apiRequest<User>('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(updates),
     })
-  },
-
-  // Delete user (admin only)
-  delete: (id: string): Promise<void> => {
-    return apiRequest<void>(`/users/${id}`, {
-      method: 'DELETE',
-    })
-  },
-
-  // Get user statistics (admin only)
-  getStats: (): Promise<{
-    total_users: number
-    active_users: number
-    admin_users: number
-    editor_users: number
-    author_users: number
-    last_updated: string
-  }> => {
-    return apiRequest('/users/stats')
   },
 }
 

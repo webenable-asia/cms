@@ -54,7 +54,7 @@ export interface User {
   rev?: string
   username: string
   email: string
-  role: 'admin' | 'editor' | 'author'
+  role: 'user' // Frontend only handles regular users
   active: boolean
   created_at: string
   updated_at: string

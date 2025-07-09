@@ -25,6 +25,55 @@ localhost:80 {
         -Server
     }
 
+    # Admin panel static assets - serve from admin panel service (don't strip prefix)
+    handle /admin/_next/* {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        header Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # Admin panel API routes - forward to admin panel (but they should proxy to backend)
+    handle /admin/api/* {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Admin panel routes - proxy to admin panel (no caching)
+    handle /admin/* {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # Ensure admin pages are never cached
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        header Pragma "no-cache"
+        header Expires "0"
+    }
+
+    # Admin root - proxy to admin panel
+    handle /admin {
+        reverse_proxy admin-panel:3001 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_ip}
+            header_up X-Forwarded-For {remote_ip}
+            header_up X-Forwarded-Proto {scheme}
+        }
+        # Ensure admin pages are never cached
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        header Pragma "no-cache"
+        header Expires "0"
+    }
+
     # API routes - proxy to backend (without stripping path)
     handle /api/* {
         reverse_proxy backend:8080 {
@@ -47,7 +96,7 @@ localhost:80 {
     }
     handle @static {
         header Cache-Control "public, max-age=31536000, immutable"
-        reverse_proxy frontend:8080 {
+        reverse_proxy frontend:3000 {
             header_up Host {upstream_hostport}
             header_up X-Real-IP {remote_ip}
             header_up X-Forwarded-For {remote_ip}
@@ -57,7 +106,7 @@ localhost:80 {
 
     # Frontend routes - everything else goes to Next.js
     handle {
-        reverse_proxy frontend:8080 {
+        reverse_proxy frontend:3000 {
             header_up Host {upstream_hostport}
             header_up X-Real-IP {remote_ip}
             header_up X-Forwarded-For {remote_ip}

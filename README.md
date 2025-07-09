@@ -6,10 +6,11 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 ### 🚀 **Core Features**
 - **Modern Stack**: Next.js 15 frontend with Go 1.24 RESTful API backend (released Feb 2025)
+- **Separated Architecture**: Frontend (public site) and Admin Panel (CMS) as separate applications
 - **Database**: CouchDB for flexible document storage with Valkey (Redis) caching
 - **Authentication**: Secure JWT-based authentication with bcrypt password hashing
-- **Content Management**: Create, edit, and publish blog posts with pagination
-- **Admin Interface**: Clean and intuitive admin dashboard with user management
+- **Content Management**: Create, edit, and publish blog posts with Markdown editor
+- **Admin Interface**: Separate admin panel with rich content editing and user management
 - **Responsive Design**: Mobile-friendly interface with Tailwind CSS
 - **Theme Toggle**: Light/Dark/System theme support with animated transitions
 - **UI Components**: Radix UI components with shadcn/ui design system
@@ -114,6 +115,7 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 4. **Access the application:**
    - **Frontend**: http://localhost (via Caddy reverse proxy)
+   - **Admin Panel**: http://localhost/admin (via Caddy reverse proxy)
    - **Backend API**: http://localhost/api (via Caddy reverse proxy)
    - **Database**: http://localhost:5984 (via Caddy database proxy)
 
@@ -131,7 +133,8 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 - **[Production Deployment Guide](PRODUCTION_DEPLOYMENT.md)** - Complete production deployment checklist and guide
 - **[Podman Development Guide](PODMAN.md)** - Complete Podman setup and workflow
-- **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details  
+- **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details (public site)
+- **[Admin Panel README](admin-panel/README.md)** - Next.js 15.3.5 admin panel details (CMS interface)  
 - **[Backend README](backend/README.md)** - Go 1.24 backend documentation
 - **[Security Checklist](SECURITY_CHECKLIST.md)** - Security features and implementation checklist
 - **[Reverse Proxy Guide](docs/REVERSE_PROXY.md)** - Caddy reverse proxy architecture and configuration
@@ -160,7 +163,8 @@ WebEnable CMS uses a multi-container Podman setup for production:
 | Service | Technology | Port | Purpose |
 |---------|------------|------|---------|
 | **caddy** | Caddy 2 | 80/443/5984 | Reverse proxy & database proxy |
-| **frontend** | Next.js 15.3.5 | Internal | React frontend with SSR |
+| **frontend** | Next.js 15.3.5 | Internal | React frontend with SSR (public site) |
+| **admin-panel** | Next.js 15.3.5 | Internal | Admin interface with CMS features |
 | **backend** | Go 1.24 | Internal | RESTful API server |
 | **db** | CouchDB 3 | Internal | Document database |
 | **cache** | Valkey (Redis) | Internal | Session & cache storage |
@@ -177,21 +181,25 @@ WebEnable CMS uses a multi-container Podman setup for production:
 ### Network Communication
 
 ```
-Client ←→ Caddy (80/443/5984) ←→ Frontend (3000) ←→ Backend (8080) ←→ Database (5984)
+Client ←→ Caddy (80/443/5984) ←→ Frontend (3000) / Admin Panel (3001) ←→ Backend (8080) ←→ Database (5984)
                                      ↓
                                 Cache (6379)
 ```
+
+**Routing:**
+- `/admin*` routes → Admin Panel (port 3001)
+- All other routes → Frontend (port 3000)
 
 All services communicate through Podman's internal network with only Caddy exposed to the host.
 
 ## Project Structure
 
 ```
-├── docker-compose.yml          # Podman Compose configuration
+├── podman-compose.yml          # Podman Compose configuration
 ├── caddy/                      # Caddy reverse proxy configuration
 │   └── Caddyfile              # Caddy configuration file
 ├── backend/                    # Go backend application
-│   ├── Dockerfile             # Backend Podman configuration
+│   ├── Containerfile          # Backend Podman configuration
 │   ├── .air.toml              # Air live reload configuration
 │   ├── main.go                # Main application entry point
 │   ├── go.mod                 # Go module dependencies
@@ -205,31 +213,56 @@ All services communicate through Podman's internal network with only Caddy expos
 │   │   └── database.go        # CouchDB initialization
 │   └── middleware/            # HTTP middleware
 │       └── auth.go            # JWT authentication middleware
-└── frontend/                  # Next.js frontend application
-    ├── Dockerfile             # Frontend Podman configuration
+├── frontend/                  # Next.js frontend application (public site)
+│   ├── Containerfile          # Frontend Podman configuration
+│   ├── package.json           # Node.js dependencies
+│   ├── next.config.js         # Next.js configuration
+│   ├── tailwind.config.js     # Tailwind CSS configuration
+│   ├── app/                   # Next.js App Router
+│   │   ├── layout.tsx         # Root layout
+│   │   ├── page.tsx           # Home page
+│   │   ├── globals.css        # Global styles
+│   │   ├── blog/              # Blog section
+│   │   │   ├── page.tsx       # Blog listing
+│   │   │   └── [id]/          # Individual post pages
+│   │   ├── about/             # About page
+│   │   ├── contact/           # Contact page
+│   │   └── services/          # Services page
+│   ├── components/            # Reusable React components
+│   │   ├── navigation.tsx     # Main navigation with theme toggle
+│   │   ├── theme-provider.tsx # Theme context provider
+│   │   └── ui/                # UI component library
+│   │       ├── button.tsx     # Button component
+│   │       └── dropdown-menu.tsx # Dropdown menu component
+│   └── lib/                   # Utility libraries
+│       └── api.ts             # API client configuration
+└── admin-panel/               # Next.js admin panel application (CMS)
+    ├── Containerfile          # Admin panel Podman configuration
     ├── package.json           # Node.js dependencies
     ├── next.config.js         # Next.js configuration
-    ├── tailwind.config.js     # Tailwind CSS configuration
-    ├── app/                   # Next.js App Router
-    │   ├── layout.tsx         # Root layout
-    │   ├── page.tsx           # Home page
-    │   ├── globals.css        # Global styles
-    │   ├── blog/              # Blog section
-    │   │   ├── page.tsx       # Blog listing
-    │   │   └── [id]/          # Individual post pages
+    ├── app/                   # Next.js App Router (admin routes)
+    │   ├── layout.tsx         # Admin layout with providers
+    │   ├── page.tsx           # Admin redirect page
     │   └── admin/             # Admin section
-    │       ├── page.tsx       # Admin login
+    │       ├── login/         # Admin authentication
     │       ├── dashboard/     # Admin dashboard
-    │       └── posts/         # Post management
-    ├── components/            # Reusable React components
-    │   ├── navigation.tsx     # Main navigation with theme toggle
+    │       ├── posts/         # Post management with Markdown editor
+    │       ├── users/         # User management
+    │       └── contacts/      # Contact management
+    ├── components/            # Admin-specific React components
+    │   ├── post-editor.tsx    # Markdown editor with live preview
     │   ├── theme-provider.tsx # Theme context provider
+    │   ├── admin/             # Admin interface components
+    │   ├── auth/              # Authentication components
     │   └── ui/                # UI component library
-    │       ├── button.tsx     # Button component
-    │       ├── dropdown-menu.tsx # Dropdown menu component
-    │       └── theme-toggle-reference.tsx # Theme toggle component
+    ├── hooks/                 # Custom React hooks
+    │   ├── use-auth.ts        # Authentication hook
+    │   ├── use-api.ts         # API interaction hooks
+    │   └── use-posts.ts       # Posts management hooks
     └── lib/                   # Utility libraries
-        └── api.ts             # API client configuration
+        ├── api.ts             # API client configuration
+        ├── utils.ts           # General utilities
+        └── types.ts           # TypeScript type definitions
 ```
 
 ## 🔌 API Endpoints
@@ -368,8 +401,8 @@ The frontend uses Next.js with hot reloading enabled. Changes to React component
 To run the frontend locally without Docker:
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Database Management

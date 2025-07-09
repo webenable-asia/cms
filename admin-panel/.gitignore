@@ -1,0 +1,13 @@
+node_modules
+.next
+.swc
+dist
+build
+*.log
+*.tgz
+.env
+.env.local
+.env.production
+.env.development
+.DS_Store
+*.tsbuildinfo

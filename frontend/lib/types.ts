@@ -4,7 +4,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'user'; // Frontend only handles regular users, admin roles handled in admin-panel
   created_at: string;
   updated_at: string;
 }

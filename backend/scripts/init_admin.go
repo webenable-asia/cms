@@ -22,9 +22,14 @@ func main() {
 		log.Fatal("ADMIN_PASSWORD environment variable required")
 	}
 
+	adminUsername := os.Getenv("ADMIN_USERNAME")
+	if adminUsername == "" {
+		adminUsername = "admin" // fallback to default
+	}
+
 	admin := &models.User{
 		ID:        uuid.New().String(),
-		Username:  "admin",
+		Username:  adminUsername,
 		Email:     "admin@webenable.asia",
 		Role:      "admin",
 		Active:    true,

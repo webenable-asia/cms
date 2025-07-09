@@ -4,7 +4,7 @@ echo "🧹 Cleaning up Podman resources..."
 
 # Stop all containers
 podman compose down
-podman compose -f docker-compose.prod.yml down 2>/dev/null || true
+podman compose -f podman-compose.yml down 2>/dev/null || true
 
 # Remove unused images
 podman image prune -f

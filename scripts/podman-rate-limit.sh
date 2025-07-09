@@ -3,7 +3,7 @@
 # Podman-based Valkey Rate Limit Reset Script
 # Uses the Valkey container to execute commands
 
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="podman-compose.yml"
 VALKEY_SERVICE="cache"
 
 # Colors for output

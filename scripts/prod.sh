@@ -7,14 +7,14 @@ export NODE_ENV=production
 export GO_ENV=production
 
 # Build optimized images
-podman compose -f docker-compose.prod.yml build --parallel --no-cache
+podman compose -f podman-compose.yml build --parallel --no-cache
 
 # Start services
-podman compose -f docker-compose.prod.yml up -d
+podman compose -f podman-compose.yml up -d
 
 echo "✅ Production environment started!"
 echo "🌐 Application: http://localhost"
 echo "📊 Health check: http://localhost/health"
 
 # Show logs
-podman compose -f docker-compose.prod.yml logs -f
+podman compose -f podman-compose.yml logs -f

@@ -4,7 +4,7 @@
 
 set -e
 
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="podman-compose.yml"
 PROJECT_NAME="webenable-cms"
 
 # Colors for output

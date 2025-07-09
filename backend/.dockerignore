@@ -3,6 +3,7 @@
 .gitignore
 README.md
 Dockerfile
+Containerfile
 .dockerignore
 
 # Build artifacts

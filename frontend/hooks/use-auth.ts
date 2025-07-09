@@ -1,110 +1,87 @@
 'use client'
 
-import React, { useState, useEffect, useContext, createContext } from 'react'
-import { authApi, tokenManager } from '@/lib/api'
-import { User } from '@/types/api'
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 
-interface AuthContextType {
+interface User {
+  id: string
+  email: string
+  name: string
+  role: string
+}
+
+interface AuthState {
   user: User | null
-  isAuthenticated: boolean
   isLoading: boolean
-  login: (username: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  checkAuth: () => Promise<void>
+  isAuthenticated: boolean
+}
+
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  refreshAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const checkAuth = async () => {
-    try {
-      setIsLoading(true)
-      const token = tokenManager.getToken()
-      
-      if (!token) {
-        setUser(null)
-        return
-      }
+  const isAuthenticated = !!user
 
-      const result = await authApi.me()
-      
-      if (result?.user && result.user.role === 'admin' && result.user.active) {
-        setUser(result.user)
-      } else {
-        setUser(null)
-        tokenManager.removeToken()
-      }
+  const login = async (email: string, password: string) => {
+    setIsLoading(true)
+    try {
+      // TODO: Implement actual login logic with API
+      console.log('Login:', email, password)
+      // Mock user for now
+      setUser({
+        id: '1',
+        email,
+        name: 'User',
+        role: 'user'
+      })
     } catch (error) {
-      console.warn('Auth verification failed:', error)
-      setUser(null)
-      tokenManager.removeToken()
+      console.error('Login failed:', error)
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  const login = async (username: string, password: string) => {
-    try {
-      const result = await authApi.login({ username, password })
-      
-      if (result?.user && result.user.role === 'admin' && result.user.active) {
-        setUser(result.user)
-      } else {
-        setUser(null)
-        tokenManager.removeToken()
-        throw new Error('Invalid user role or inactive account')
-      }
-    } catch (error) {
-      setUser(null)
-      tokenManager.removeToken()
-      throw error
-    }
+  const logout = () => {
+    setUser(null)
+    // TODO: Clear tokens, etc.
   }
 
-  const logout = async () => {
+  const refreshAuth = async () => {
+    setIsLoading(true)
     try {
-      await authApi.logout()
+      // TODO: Implement token refresh logic
+      console.log('Refreshing auth...')
     } catch (error) {
-      console.warn('Logout API call failed:', error)
+      console.error('Auth refresh failed:', error)
+      setUser(null)
     } finally {
-      setUser(null)
-      tokenManager.removeToken()
+      setIsLoading(false)
     }
   }
 
-  // Check for existing token on mount
   useEffect(() => {
-    const initAuth = async () => {
-      const token = tokenManager.getToken()
-      
-      if (token) {
-        await checkAuth()
-      } else {
-        setUser(null)
-        setIsLoading(false)
-      }
-    }
-    
-    initAuth()
+    // TODO: Check for existing auth tokens on mount
+    setIsLoading(false)
   }, [])
 
   const value = {
     user,
-    isAuthenticated: !!user,
     isLoading,
+    isAuthenticated,
     login,
     logout,
-    checkAuth
+    refreshAuth
   }
 
-  return React.createElement(
-    AuthContext.Provider,
-    { value },
-    children
-  )
+  return React.createElement(AuthContext.Provider, { value }, children)
 }
 
 export function useAuth() {
