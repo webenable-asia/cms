@@ -36,9 +36,14 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 	// Get pagination parameters
 	page, limit := getPaginationParams(r)
 
-	// Get status filter from query parameters, default to "published" for public access
+	// Get status filter from query parameters
 	statusFilter := r.URL.Query().Get("status")
-	if statusFilter == "" {
+
+	// Check if this is an authenticated request (admin access)
+	isAuthenticated := r.Context().Value("user") != nil
+
+	// Default to "published" only for public (non-authenticated) access
+	if statusFilter == "" && !isAuthenticated {
 		statusFilter = "published"
 	}
 
@@ -75,8 +80,8 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 			post.Rev = rev
 		}
 
-		// Filter by status (now always applied, defaults to "published")
-		if post.Status != statusFilter {
+		// Filter by status if specified, or if public access (non-authenticated)
+		if statusFilter != "" && post.Status != statusFilter {
 			continue
 		}
 
@@ -167,8 +172,11 @@ func GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only return published posts for public access
-	if post.Status != "published" {
+	// Check if this is an authenticated request (admin access)
+	isAuthenticated := r.Context().Value("user") != nil
+
+	// Only return published posts for public (non-authenticated) access
+	if !isAuthenticated && post.Status != "published" {
 		http.Error(w, "Post not found", http.StatusNotFound)
 		return
 	}
