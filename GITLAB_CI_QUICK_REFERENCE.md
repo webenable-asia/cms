@@ -17,10 +17,10 @@ KUBE_CONFIG_STAGING=<base64-kubeconfig>
 KUBE_CONFIG_PROD=<base64-kubeconfig>
 
 # Application URLs
-NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-BACKEND_URL=https://api.webenable-cms.com
-ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-ADMIN_BACKEND_URL=https://api.webenable-cms.com
+NEXT_PUBLIC_API_URL=https://api.webenable.asia
+BACKEND_URL=https://api.webenable.asia
+ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable.asia
+ADMIN_BACKEND_URL=https://api.webenable.asia
 ```
 
 ### Auto-configured by GitLab
@@ -80,9 +80,9 @@ kubectl get pods -n webenable-cms-prod
 
 | Environment | Frontend | Admin Panel | API |
 |-------------|----------|-------------|-----|
-| Development | https://dev.webenable-cms.com | https://dev.webenable-cms.com/admin | https://dev.webenable-cms.com/api |
-| Staging | https://staging.webenable-cms.com | https://staging.webenable-cms.com/admin | https://staging.webenable-cms.com/api |
-| Production | https://webenable-cms.com | https://webenable-cms.com/admin | https://webenable-cms.com/api |
+| Development | https://dev.webenable.asia | https://dev.webenable.asia/admin | https://dev.webenable.asia/api |
+| Staging | https://staging.webenable.asia | https://staging.webenable.asia/admin | https://staging.webenable.asia/api |
+| Production | https://webenable.asia | https://webenable.asia/admin | https://webenable.asia/api |
 
 ## Troubleshooting
 

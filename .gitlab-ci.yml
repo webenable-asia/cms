@@ -281,7 +281,7 @@ deploy:development:
     - echo "✅ Development deployment completed"
   environment:
     name: development
-    url: https://dev.webenable-cms.com
+    url: https://dev.webenable.asia
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH =~ /^feature\/.*$/
@@ -305,7 +305,7 @@ deploy:staging:
     - echo "✅ Staging deployment completed"
   environment:
     name: staging
-    url: https://staging.webenable-cms.com
+    url: https://staging.webenable.asia
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   when: manual
@@ -344,7 +344,7 @@ deploy:production:
     - echo "✅ GKE Autopilot Production deployment completed"
   environment:
     name: production
-    url: https://webenable-cms.com
+    url: https://webenable.asia
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   when: manual
@@ -360,11 +360,11 @@ verify:health:
     - echo "Verifying application health..."
     - |
       if [ "$CI_ENVIRONMENT_NAME" = "development" ]; then
-        HEALTH_URL="https://dev.webenable-cms.com/api/health"
+        HEALTH_URL="https://dev.webenable.asia/api/health"
       elif [ "$CI_ENVIRONMENT_NAME" = "staging" ]; then
-        HEALTH_URL="https://staging.webenable-cms.com/api/health"
+        HEALTH_URL="https://staging.webenable.asia/api/health"
       elif [ "$CI_ENVIRONMENT_NAME" = "production" ]; then
-        HEALTH_URL="https://webenable-cms.com/api/health"
+        HEALTH_URL="https://webenable.asia/api/health"
       fi
     - echo "Checking health endpoint: $HEALTH_URL"
     - curl -f -s -o /dev/null -w "HTTP Status: %{http_code}\n" $HEALTH_URL

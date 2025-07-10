@@ -91,7 +91,7 @@ c5.xlarge     | 4    | 8GB  | 100GB   | ~$140        | CPU-intensive
 m5.xlarge     | 4    | 16GB | 200GB   | ~$170        | High-traffic
 ```
 
-### Google Cloud Platform (us-central1)
+### Google Cloud Platform (asia-southeast1)
 ```
 Instance Type   | vCPU | RAM  | Storage | Monthly Cost | Use Case
 ----------------|------|------|---------|--------------|------------------

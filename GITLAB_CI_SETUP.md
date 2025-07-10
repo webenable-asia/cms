@@ -44,12 +44,12 @@ KUBE_CONFIG_PROD=<base64-encoded-kubeconfig>
 #### Application Configuration
 ```bash
 # Frontend Environment Variables
-NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-BACKEND_URL=https://api.webenable-cms.com
+NEXT_PUBLIC_API_URL=https://api.webenable.asia
+BACKEND_URL=https://api.webenable.asia
 
 # Admin Panel Environment Variables
-ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-ADMIN_BACKEND_URL=https://api.webenable-cms.com
+ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable.asia
+ADMIN_BACKEND_URL=https://api.webenable.asia
 ```
 
 ### 3. Kubernetes Cluster Setup
@@ -108,17 +108,17 @@ The pipeline uses the following branch strategy:
 ### Environment Configuration
 
 #### Development Environment
-- **URL**: https://dev.webenable-cms.com
+- **URL**: https://dev.webenable.asia
 - **Auto-deploy**: Yes (on main branch and feature branches)
 - **Manual approval**: No
 
 #### Staging Environment
-- **URL**: https://staging.webenable-cms.com
+- **URL**: https://staging.webenable.asia
 - **Auto-deploy**: No (manual approval required)
 - **Trigger**: Release branches
 
 #### Production Environment
-- **URL**: https://webenable-cms.com
+- **URL**: https://webenable.asia
 - **Auto-deploy**: No (manual approval required)
 - **Trigger**: Release branches
 

@@ -28,7 +28,7 @@ configMapGenerator:
       - ADMIN_NODE_ENV=production
       - GIN_MODE=release
       - SESSION_SECURE=true
-      - CORS_ORIGINS=https://webenable-cms.com,https://admin.webenable-cms.com
+      - CORS_ORIGINS=https://webenable.asia,https://admin.webenable.asia
 
 secretGenerator:
   - name: webenable-cms-secrets

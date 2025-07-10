@@ -15,7 +15,7 @@ This guide will get you up and running with WebEnable CMS on GKE Autopilot using
 - Get API token from Profile → API Tokens
 
 ### 3. Domain
-- Purchase a domain (e.g., `webenable-cms.com`)
+- Purchase a domain (e.g., `webenable.asia`)
 - Point nameservers to Cloudflare
 
 ## ⚡ Quick Deployment (15 minutes)
@@ -25,7 +25,7 @@ This guide will get you up and running with WebEnable CMS on GKE Autopilot using
 ```bash
 export GCP_PROJECT_ID="your-project-id"
 export GCP_CLUSTER_NAME="webenable-cms-autopilot"
-export GCP_CLUSTER_REGION="us-central1"
+export GCP_CLUSTER_REGION="asia-southeast1"
 export CLOUDFLARE_API_TOKEN="your-cloudflare-api-token"
 export CLOUDFLARE_ZONE_ID="your-zone-id"
 ```
@@ -53,9 +53,9 @@ chmod +x k8s/gke-autopilot/deploy-autopilot.sh
 ## 🌐 Access Your Application
 
 Once deployed, access your application at:
-- **Frontend**: https://webenable-cms.com
-- **Admin Panel**: https://admin.webenable-cms.com
-- **API**: https://api.webenable-cms.com
+- **Frontend**: https://webenable.asia
+- **Admin Panel**: https://admin.webenable.asia
+- **API**: https://api.webenable.asia
 
 ## 💰 Cost Breakdown
 
@@ -98,7 +98,7 @@ gcloud billing accounts list
 2. **DNS Not Working**
    ```bash
    # Check DNS propagation
-   dig webenable-cms.com
+   dig webenable.asia
    
    # Verify Cloudflare settings
    # Go to Cloudflare Dashboard → DNS
@@ -155,7 +155,7 @@ kubectl scale deployment frontend --replicas=2 -n webenable-cms-prod
 ### Application Monitoring:
 ```bash
 # Check application health
-curl https://api.webenable-cms.com/health
+curl https://api.webenable.asia/health
 
 # View application logs
 kubectl logs -f deployment/backend -n webenable-cms-prod

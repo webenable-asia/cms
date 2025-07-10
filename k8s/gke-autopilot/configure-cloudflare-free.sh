@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-""}
 CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-""}
-DOMAIN=${DOMAIN:-"webenable-cms.com"}
+DOMAIN=${DOMAIN:-"webenable.asia"}
 STATIC_IP=${STATIC_IP:-""}
 
 # Function to print colored output
@@ -302,7 +302,7 @@ show_usage() {
     echo "Environment Variables:"
     echo "  CLOUDFLARE_API_TOKEN  Cloudflare API token (required)"
     echo "  CLOUDFLARE_ZONE_ID    Cloudflare zone ID (required)"
-    echo "  DOMAIN                Domain name (default: webenable-cms.com)"
+    echo "  DOMAIN                Domain name (default: webenable.asia)"
     echo "  STATIC_IP             Static IP address (required)"
 }
 

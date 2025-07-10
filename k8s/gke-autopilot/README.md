@@ -49,7 +49,7 @@ gcloud services enable dns.googleapis.com
 1. **Create Free Account**:
    - Go to https://cloudflare.com
    - Sign up for a free account
-   - Add your domain (e.g., `webenable-cms.com`)
+   - Add your domain (e.g., `webenable.asia`)
 
 2. **Update Nameservers**:
    - Copy the provided nameservers
@@ -78,7 +78,7 @@ sudo mv linux-amd64/helm /usr/local/bin/
 ```bash
 # Create production cluster
 gcloud container clusters create-auto webenable-cms-autopilot \
-  --region us-central1 \
+  --region asia-southeast1 \
   --project YOUR_PROJECT_ID \
   --release-channel regular \
   --enable-private-nodes \
@@ -87,7 +87,7 @@ gcloud container clusters create-auto webenable-cms-autopilot \
   --enable-autopilot
 
 # Get cluster credentials
-gcloud container clusters get-credentials webenable-cms-autopilot --region us-central1
+gcloud container clusters get-credentials webenable-cms-autopilot --region asia-southeast1
 ```
 
 ### 2. Configure Workload Identity (Optional)
@@ -115,13 +115,13 @@ Create these DNS records in Cloudflare (all free):
 
 ```bash
 # A Records (point to GKE load balancer IP)
-webenable-cms.com        A    <GKE_LOAD_BALANCER_IP>
-www.webenable-cms.com    A    <GKE_LOAD_BALANCER_IP>
-api.webenable-cms.com    A    <GKE_LOAD_BALANCER_IP>
-admin.webenable-cms.com  A    <GKE_LOAD_BALANCER_IP>
+webenable.asia        A    <GKE_LOAD_BALANCER_IP>
+www.webenable.asia    A    <GKE_LOAD_BALANCER_IP>
+api.webenable.asia    A    <GKE_LOAD_BALANCER_IP>
+admin.webenable.asia  A    <GKE_LOAD_BALANCER_IP>
 
 # CNAME Records
-*.webenable-cms.com      CNAME webenable-cms.com
+*.webenable.asia      CNAME webenable.asia
 ```
 
 ### 2. Cloudflare Free Tier Settings
@@ -191,7 +191,7 @@ Add these variables to your GitLab CI/CD settings:
 # GCP Configuration
 GCP_PROJECT_ID=your-project-id
 GCP_CLUSTER_NAME=webenable-cms-autopilot
-GCP_CLUSTER_REGION=us-central1
+GCP_CLUSTER_REGION=asia-southeast1
 GCP_SERVICE_ACCOUNT_KEY=<base64-encoded-service-account-key>
 
 # Cloudflare Configuration
@@ -199,10 +199,10 @@ CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 CLOUDFLARE_ZONE_ID=your-zone-id
 
 # Application URLs
-NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-BACKEND_URL=https://api.webenable-cms.com
-ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-ADMIN_BACKEND_URL=https://api.webenable-cms.com
+NEXT_PUBLIC_API_URL=https://api.webenable.asia
+BACKEND_URL=https://api.webenable.asia
+ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable.asia
+ADMIN_BACKEND_URL=https://api.webenable.asia
 ```
 
 ## Cost Optimization for Autopilot
@@ -344,8 +344,8 @@ kubectl get secrets -n webenable-cms-prod -o yaml > secrets-backup-autopilot-$(d
 3. **DNS Resolution Issues**:
    ```bash
    # Check DNS propagation
-   dig webenable-cms.com
-   nslookup webenable-cms.com
+   dig webenable.asia
+   nslookup webenable.asia
    ```
 
 4. **Cloudflare Free Tier Limits**:

@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_ID=${GCP_PROJECT_ID:-"your-project-id"}
 CLUSTER_NAME=${GCP_CLUSTER_NAME:-"webenable-cms-autopilot"}
-CLUSTER_REGION=${GCP_CLUSTER_REGION:-"us-central1"}
+CLUSTER_REGION=${GCP_CLUSTER_REGION:-"asia-southeast1"}
 NAMESPACE=${NAMESPACE:-"webenable-cms-prod"}
 ENVIRONMENT=${ENVIRONMENT:-"production"}
 
@@ -162,7 +162,7 @@ create_static_ip() {
         print_status "Updating Cloudflare DNS records..."
         
         # Update A records
-        for host in "webenable-cms.com" "www.webenable-cms.com" "api.webenable-cms.com" "admin.webenable-cms.com"; do
+        for host in "webenable.asia" "www.webenable.asia" "api.webenable.asia" "admin.webenable.asia"; do
             curl -X PUT "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records" \
                 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
                 -H "Content-Type: application/json" \
@@ -254,9 +254,9 @@ show_deployment_info() {
     
     echo ""
     print_status "Access URLs:"
-    echo "  Frontend: https://webenable-cms.com"
-    echo "  Admin Panel: https://admin.webenable-cms.com"
-    echo "  API: https://api.webenable-cms.com"
+    echo "  Frontend: https://webenable.asia"
+    echo "  Admin Panel: https://admin.webenable.asia"
+    echo "  API: https://api.webenable.asia"
     
     echo ""
     print_status "Cost Optimization Features:"

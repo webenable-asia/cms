@@ -32,7 +32,7 @@ gcloud services enable dns.googleapis.com
 
 1. **Add Domain to Cloudflare**:
    - Log into Cloudflare dashboard
-   - Add your domain (e.g., `webenable-cms.com`)
+   - Add your domain (e.g., `webenable.asia`)
    - Update nameservers at your domain registrar
 
 2. **Create API Token**:
@@ -65,7 +65,7 @@ sudo mv cmctl /usr/local/bin/
 ```bash
 # Create production cluster
 gcloud container clusters create webenable-cms-prod \
-  --zone us-central1-a \
+  --zone asia-southeast1-a \
   --num-nodes 3 \
   --min-nodes 1 \
   --max-nodes 10 \
@@ -81,7 +81,7 @@ gcloud container clusters create webenable-cms-prod \
   --enable-workload-identity
 
 # Get cluster credentials
-gcloud container clusters get-credentials webenable-cms-prod --zone us-central1-a
+gcloud container clusters get-credentials webenable-cms-prod --zone asia-southeast1-a
 ```
 
 ### 2. Configure Workload Identity
@@ -113,13 +113,13 @@ Create these DNS records in Cloudflare:
 
 ```bash
 # A Records (point to GKE load balancer IP)
-webenable-cms.com        A    <GKE_LOAD_BALANCER_IP>
-www.webenable-cms.com    A    <GKE_LOAD_BALANCER_IP>
-api.webenable-cms.com    A    <GKE_LOAD_BALANCER_IP>
-admin.webenable-cms.com  A    <GKE_LOAD_BALANCER_IP>
+webenable.asia        A    <GKE_LOAD_BALANCER_IP>
+www.webenable.asia    A    <GKE_LOAD_BALANCER_IP>
+api.webenable.asia    A    <GKE_LOAD_BALANCER_IP>
+admin.webenable.asia  A    <GKE_LOAD_BALANCER_IP>
 
 # CNAME Records
-*.webenable-cms.com      CNAME webenable-cms.com
+*.webenable.asia      CNAME webenable.asia
 ```
 
 ### 2. Cloudflare Settings
@@ -189,7 +189,7 @@ Add these variables to your GitLab CI/CD settings:
 # GCP Configuration
 GCP_PROJECT_ID=your-project-id
 GCP_CLUSTER_NAME=webenable-cms-prod
-GCP_CLUSTER_ZONE=us-central1-a
+GCP_CLUSTER_ZONE=asia-southeast1-a
 GCP_SERVICE_ACCOUNT_KEY=<base64-encoded-service-account-key>
 
 # Cloudflare Configuration
@@ -197,10 +197,10 @@ CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 CLOUDFLARE_ZONE_ID=your-zone-id
 
 # Application URLs
-NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-BACKEND_URL=https://api.webenable-cms.com
-ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable-cms.com
-ADMIN_BACKEND_URL=https://api.webenable-cms.com
+NEXT_PUBLIC_API_URL=https://api.webenable.asia
+BACKEND_URL=https://api.webenable.asia
+ADMIN_NEXT_PUBLIC_API_URL=https://api.webenable.asia
+ADMIN_BACKEND_URL=https://api.webenable.asia
 ```
 
 ### 2. Update GitLab CI Pipeline
@@ -218,7 +218,7 @@ The pipeline will automatically:
 ```bash
 # Enable monitoring
 gcloud container clusters update webenable-cms-prod \
-  --zone us-central1-a \
+  --zone asia-southeast1-a \
   --enable-stackdriver-kubernetes
 
 # View metrics in Google Cloud Console
@@ -300,7 +300,7 @@ kubectl get secrets -n webenable-cms-prod -o yaml > secrets-backup-$(date +%Y%m%
 ```bash
 # Configure node autoscaling
 gcloud container clusters update webenable-cms-prod \
-  --zone us-central1-a \
+  --zone asia-southeast1-a \
   --enable-autoscaling \
   --min-nodes 1 \
   --max-nodes 5
@@ -326,8 +326,8 @@ gcloud container clusters update webenable-cms-prod \
 2. **DNS Resolution Issues**:
    ```bash
    # Check DNS propagation
-   dig webenable-cms.com
-   nslookup webenable-cms.com
+   dig webenable.asia
+   nslookup webenable.asia
    ```
 
 3. **Load Balancer Issues**:

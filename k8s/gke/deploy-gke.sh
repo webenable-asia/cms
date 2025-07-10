@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_ID=${GCP_PROJECT_ID:-"your-project-id"}
 CLUSTER_NAME=${GCP_CLUSTER_NAME:-"webenable-cms-prod"}
-CLUSTER_ZONE=${GCP_CLUSTER_ZONE:-"us-central1-a"}
+CLUSTER_ZONE=${GCP_CLUSTER_ZONE:-"asia-southeast1-a"}
 NAMESPACE=${NAMESPACE:-"webenable-cms-prod"}
 ENVIRONMENT=${ENVIRONMENT:-"production"}
 
@@ -126,14 +126,14 @@ create_static_ip() {
     print_status "Creating static IP address..."
     
     # Check if static IP already exists
-    if ! gcloud compute addresses describe webenable-cms-ip --region=us-central1 2>/dev/null; then
+    if ! gcloud compute addresses describe webenable-cms-ip --region=asia-southeast1 2>/dev/null; then
         gcloud compute addresses create webenable-cms-ip \
-            --region=us-central1 \
+            --region=asia-southeast1 \
             --description="Static IP for WebEnable CMS"
     fi
     
     # Get the IP address
-    STATIC_IP=$(gcloud compute addresses describe webenable-cms-ip --region=us-central1 --format="value(address)")
+    STATIC_IP=$(gcloud compute addresses describe webenable-cms-ip --region=asia-southeast1 --format="value(address)")
     print_success "Static IP created: $STATIC_IP"
     
     # Update DNS records in Cloudflare
@@ -141,7 +141,7 @@ create_static_ip() {
         print_status "Updating Cloudflare DNS records..."
         
         # Update A records
-        for host in "webenable-cms.com" "www.webenable-cms.com" "api.webenable-cms.com" "admin.webenable-cms.com"; do
+        for host in "webenable.asia" "www.webenable.asia" "api.webenable.asia" "admin.webenable.asia"; do
             curl -X PUT "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records" \
                 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
                 -H "Content-Type: application/json" \
@@ -225,14 +225,14 @@ show_deployment_info() {
     echo "  Environment: $ENVIRONMENT"
     
     # Get static IP
-    STATIC_IP=$(gcloud compute addresses describe webenable-cms-ip --region=us-central1 --format="value(address)" 2>/dev/null || echo "Not created")
+    STATIC_IP=$(gcloud compute addresses describe webenable-cms-ip --region=asia-southeast1 --format="value(address)" 2>/dev/null || echo "Not created")
     echo "  Static IP: $STATIC_IP"
     
     echo ""
     print_status "Access URLs:"
-    echo "  Frontend: https://webenable-cms.com"
-    echo "  Admin Panel: https://admin.webenable-cms.com"
-    echo "  API: https://api.webenable-cms.com"
+    echo "  Frontend: https://webenable.asia"
+    echo "  Admin Panel: https://admin.webenable.asia"
+    echo "  API: https://api.webenable.asia"
     
     echo ""
     print_status "Useful Commands:"
