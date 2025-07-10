@@ -1,0 +1,58 @@
+extends: default
+
+rules:
+  # 80 chars should be enough, but don't fail if a line is longer
+  line-length: disable
+  
+  # Allow both `on` and `On` as valid truthy values
+  truthy:
+    check-keys: false
+  
+  # Allow comments in YAML files
+  comments-indentation: disable
+  
+  # Allow trailing spaces in comments
+  trailing-spaces: disable
+  
+  # Allow empty lines at the end of files
+  empty-lines:
+    max: 1
+    max-end: 1
+  
+  # Allow document start marker
+  document-start: disable
+  
+  # Allow flow style collections
+  flow-style: disable
+  
+  # Allow unquoted strings
+  quoted-strings: disable
+  
+  # Allow hyphens in keys
+  hyphens:
+    max-spaces-before: 1
+    max-spaces-after: 1
+  
+  # Allow colons in keys
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  
+  # Allow commas in flow collections
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+  
+  # Allow brackets in flow collections
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  
+  # Allow braces in flow collections
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  
+  # Allow comments
+  comments:
+    min-spaces-from-content: 1 

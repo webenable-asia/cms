@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webenable-cms-config
+  namespace: webenable-cms
+data:
+  # Backend Configuration
+  COUCHDB_URL: "http://admin:${COUCHDB_PASSWORD}@couchdb-service:5984/"
+  VALKEY_URL: "redis://:${VALKEY_PASSWORD}@valkey-service:6379"
+  GIN_MODE: "release"
+  SESSION_DOMAIN: "localhost"
+  SESSION_SECURE: "false"
+  CORS_ORIGINS: "http://localhost:3000,http://frontend-service:3000,https://localhost"
+  
+  # Frontend Configuration
+  NEXT_PUBLIC_API_URL: "http://localhost/api"
+  BACKEND_URL: "http://backend-service:8080"
+  NODE_ENV: "production"
+  
+  # Admin Panel Configuration
+  ADMIN_NEXT_PUBLIC_API_URL: "http://localhost/api"
+  ADMIN_BACKEND_URL: "http://backend-service:8080"
+  ADMIN_NODE_ENV: "production"
+  
+  # CouchDB Configuration
+  COUCHDB_USER: "admin"
+  
+  # Valkey Configuration
+  VALKEY_MAXMEMORY: "256mb"
+  VALKEY_MAXMEMORY_POLICY: "allkeys-lru"
+  
+  # Resource Limits
+  BACKEND_CPU_LIMIT: "1000m"
+  BACKEND_MEMORY_LIMIT: "512Mi"
+  FRONTEND_CPU_LIMIT: "500m"
+  FRONTEND_MEMORY_LIMIT: "1Gi"
+  ADMIN_CPU_LIMIT: "500m"
+  ADMIN_MEMORY_LIMIT: "1Gi"
+  COUCHDB_CPU_LIMIT: "1000m"
+  COUCHDB_MEMORY_LIMIT: "1Gi"
+  VALKEY_CPU_LIMIT: "500m"
+  VALKEY_MEMORY_LIMIT: "512Mi" 

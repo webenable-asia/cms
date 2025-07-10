@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-panel
+  namespace: webenable-cms
+  labels:
+    app.kubernetes.io/component: admin-panel
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: admin-panel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: admin-panel
+    spec:
+      serviceAccountName: admin-panel-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: admin-panel
+        image: registry.gitlab.com/webenable/cms/admin-panel:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3001
+          name: http
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: webenable-cms-config
+              key: ADMIN_NEXT_PUBLIC_API_URL
+        - name: BACKEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: webenable-cms-config
+              key: ADMIN_BACKEND_URL
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: webenable-cms-config
+              key: ADMIN_NODE_ENV
+        - name: PORT
+          value: "3001"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /admin
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /admin
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /admin
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+      imagePullSecrets:
+      - name: gitlab-registry-secret 

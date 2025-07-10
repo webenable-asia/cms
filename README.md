@@ -133,6 +133,10 @@ A production-ready content management system built with Next.js 15, Go 1.24, and
 
 - **[Production Deployment Guide](PRODUCTION_DEPLOYMENT.md)** - Complete production deployment checklist and guide
 - **[Docker Development Guide](DOCKER.md)** - Complete Docker setup and workflow
+- **[GKE Autopilot Quick Start](k8s/gke-autopilot/QUICK_START.md)** - Deploy on GKE Autopilot with Cloudflare free tier
+- **[GKE Autopilot Guide](k8s/gke-autopilot/README.md)** - Complete GKE Autopilot deployment guide
+- **[GitLab CI/CD Setup](GITLAB_CI_SETUP.md)** - Complete GitLab CI/CD pipeline configuration
+- **[GitLab CI/CD Quick Reference](GITLAB_CI_QUICK_REFERENCE.md)** - Quick reference for CI/CD operations
 - **[Frontend README](frontend/README.md)** - Next.js 15.3.5 frontend details (public site)
 - **[Admin Panel README](admin-panel/README.md)** - Next.js 15.3.5 admin panel details (CMS interface)  
 - **[Backend README](backend/README.md)** - Go 1.24 backend documentation
@@ -153,6 +157,51 @@ Use the included `manage.sh` script for easier production management:
 ./manage.sh open      # Open application in browser
 ./manage.sh help      # Show all commands
 ```
+
+## 🚀 CI/CD Pipeline
+
+WebEnable CMS includes a comprehensive GitLab CI/CD pipeline for automated testing, building, and deployment:
+
+### Pipeline Features
+- **Multi-stage Pipeline**: Validate → Test → Build → Security → Deploy
+- **Automated Testing**: Unit tests for backend, frontend, and admin panel
+- **Docker Image Building**: Multi-stage builds with GitLab Container Registry
+- **Security Scanning**: Trivy vulnerability scanning for all images
+- **Kubernetes Deployment**: Automated deployment using Kustomize
+- **Multi-environment Support**: Development, staging, and production environments
+
+### Quick Start with CI/CD
+1. **Configure GitLab Project**: Enable Container Registry and set up environment variables
+2. **Set up Kubernetes**: Create namespaces and apply registry secrets
+3. **Push to GitLab**: The pipeline will automatically run on commits and merge requests
+
+### Branch Strategy
+- **Main Branch**: Auto-deploy to development, manual deployment to staging/production
+- **Feature Branches**: Auto-deploy to development for testing
+- **Release Branches**: Manual deployment to staging and production
+- **Merge Requests**: Validation and testing only
+
+For detailed setup instructions, see **[GitLab CI/CD Setup Guide](GITLAB_CI_SETUP.md)**.
+
+## ☁️ Cloud Deployment Options
+
+### GKE Autopilot + Cloudflare Free Tier (Recommended)
+- **Cost**: $51-152/month (including domain)
+- **Setup Time**: 30 minutes
+- **Features**: Fully managed, auto-scaling, free CDN
+- **Quick Start**: See **[GKE Autopilot Quick Start](k8s/gke-autopilot/QUICK_START.md)**
+
+### Traditional GKE + Cloudflare
+- **Cost**: $100-300/month
+- **Setup Time**: 1-2 hours
+- **Features**: Full control, advanced networking
+- **Guide**: See **[GKE Deployment Guide](k8s/gke/README.md)**
+
+### Docker Compose (Local/Development)
+- **Cost**: $0 (local deployment)
+- **Setup Time**: 5 minutes
+- **Features**: Perfect for development and testing
+- **Quick Start**: Use `./manage.sh start`
 
 ## Docker Architecture
 

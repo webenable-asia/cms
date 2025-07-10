@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: webenable-cms-monitor
+  namespace: webenable-cms
+  labels:
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: webenable-cms
+  endpoints:
+  - port: http
+    path: /api/health
+    interval: 30s
+    timeout: 10s
+    scheme: http
+  - port: http
+    path: /
+    interval: 30s
+    timeout: 10s
+    scheme: http
+    targetPort: 3000
+  - port: http
+    path: /admin
+    interval: 30s
+    timeout: 10s
+    scheme: http
+    targetPort: 3001 

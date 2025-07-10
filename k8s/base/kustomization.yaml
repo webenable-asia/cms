@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: webenable-cms
+  namespace: webenable-cms
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - couchdb/
+  - valkey/
+  - backend/
+  - frontend/
+  - admin-panel/
+  - monitoring/
+  - ingress.yaml
+  - service-accounts.yaml
+
+commonLabels:
+  app.kubernetes.io/name: webenable-cms
+  app.kubernetes.io/part-of: webenable-cms
+
+commonAnnotations:
+  app.kubernetes.io/description: "WebEnable CMS - Modern content management system" 

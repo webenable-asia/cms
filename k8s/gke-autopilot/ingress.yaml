@@ -1,0 +1,127 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webenable-cms-ingress
+  namespace: webenable-cms
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "webenable-cms-autopilot-ip"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/common-name: "webenable-cms.com"
+    cert-manager.io/dns-names: "webenable-cms.com,www.webenable-cms.com,api.webenable-cms.com,admin.webenable-cms.com"
+    # Cloudflare annotations
+    external-dns.alpha.kubernetes.io/hostname: "webenable-cms.com,www.webenable-cms.com,api.webenable-cms.com,admin.webenable-cms.com"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    # Autopilot optimizations
+    cloud.google.com/load-balancer-type: "External"
+    cloud.google.com/backend-config: '{"default": "backend-config"}'
+    # Security headers
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+    # Rate limiting (Cloudflare free tier: 10,000 requests/day)
+    nginx.ingress.kubernetes.io/rate-limit: "50"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    # CORS
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://webenable-cms.com,https://www.webenable-cms.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+spec:
+  tls:
+  - hosts:
+    - webenable-cms.com
+    - www.webenable-cms.com
+    - api.webenable-cms.com
+    - admin.webenable-cms.com
+    secretName: webenable-cms-tls
+  rules:
+  - host: webenable-cms.com
+    http:
+      paths:
+      - path: /admin
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-panel-service
+            port:
+              number: 3001
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
+  - host: www.webenable-cms.com
+    http:
+      paths:
+      - path: /admin
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-panel-service
+            port:
+              number: 3001
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
+  - host: api.webenable-cms.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+  - host: admin.webenable-cms.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-panel-service
+            port:
+              number: 3001
+---
+# Backend config for Autopilot optimization
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: backend-config
+  namespace: webenable-cms
+spec:
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /api/health
+    port: 8080
+  connectionDraining:
+    drainingTimeoutSec: 60
+  logging:
+    enable: true
+    sampleRate: 1.0 

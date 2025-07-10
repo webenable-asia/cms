@@ -1,0 +1,378 @@
+# WebEnable CMS - GitLab CI/CD Pipeline
+# This pipeline builds Docker images and deploys to Kubernetes using Kustomize
+
+stages:
+  - validate
+  - test
+  - build
+  - security
+  - deploy
+
+variables:
+  # Docker registry configuration
+  DOCKER_REGISTRY: "registry.gitlab.com"
+  DOCKER_IMAGE_PREFIX: "$DOCKER_REGISTRY/$CI_PROJECT_PATH"
+  
+  # Kubernetes configuration
+  KUBE_NAMESPACE_DEV: "webenable-cms-dev"
+  KUBE_NAMESPACE_STAGING: "webenable-cms-staging"
+  KUBE_NAMESPACE_PROD: "webenable-cms-prod"
+  
+  # Application versions
+  BACKEND_VERSION: "$CI_COMMIT_SHORT_SHA"
+  FRONTEND_VERSION: "$CI_COMMIT_SHORT_SHA"
+  ADMIN_PANEL_VERSION: "$CI_COMMIT_SHORT_SHA"
+  
+  # Build configuration
+  DOCKER_BUILDKIT: "1"
+  DOCKER_DRIVER: "overlay2"
+
+# Cache dependencies between jobs
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - backend/vendor/
+    - frontend/node_modules/
+    - admin-panel/node_modules/
+
+# =============================================================================
+# VALIDATION STAGE
+# =============================================================================
+
+validate:yaml:
+  stage: validate
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache yamllint
+  script:
+    - echo "Validating YAML files..."
+    - yamllint -c .yamllint k8s/
+    - echo "Validating Kubernetes manifests..."
+    - find k8s/ -name "*.yaml" -exec echo "Validating {}" \;
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+validate:kustomize:
+  stage: validate
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+    - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+    - mv kustomize /usr/local/bin/
+  script:
+    - echo "Validating Kustomize manifests..."
+    - kustomize build k8s/overlays/development | kubectl apply --dry-run=client -f -
+    - kustomize build k8s/overlays/staging | kubectl apply --dry-run=client -f -
+    - kustomize build k8s/overlays/production | kubectl apply --dry-run=client -f -
+    - echo "✅ All Kustomize manifests are valid"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+# =============================================================================
+# TEST STAGE
+# =============================================================================
+
+test:backend:
+  stage: test
+  image: golang:1.24-alpine
+  before_script:
+    - apk add --no-cache git
+    - cd backend
+    - go mod download
+  script:
+    - echo "Running backend tests..."
+    - go test -v ./...
+    - go test -v -race ./...
+    - go vet ./...
+    - go fmt ./...
+    - echo "✅ Backend tests passed"
+  coverage: '/coverage: \d+\.\d+% of statements/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+    paths:
+      - backend/coverage.xml
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+test:frontend:
+  stage: test
+  image: node:20-alpine
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - echo "Running frontend tests..."
+    - npm run lint
+    - npm run type-check
+    - npm test -- --coverage --watchAll=false
+    - echo "✅ Frontend tests passed"
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+    paths:
+      - frontend/coverage/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+test:admin-panel:
+  stage: test
+  image: node:20-alpine
+  before_script:
+    - cd admin-panel
+    - npm ci
+  script:
+    - echo "Running admin panel tests..."
+    - npm run lint
+    - npm run type-check
+    - npm test -- --coverage --watchAll=false
+    - echo "✅ Admin panel tests passed"
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: admin-panel/coverage/cobertura-coverage.xml
+    paths:
+      - admin-panel/coverage/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+
+build:backend:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building backend Docker image..."
+    - cd backend
+    - docker build --build-arg GO_ENV=production --target final -t $DOCKER_IMAGE_PREFIX/backend:$BACKEND_VERSION .
+    - docker build --build-arg GO_ENV=production --target final -t $DOCKER_IMAGE_PREFIX/backend:latest .
+    - docker push $DOCKER_IMAGE_PREFIX/backend:$BACKEND_VERSION
+    - docker push $DOCKER_IMAGE_PREFIX/backend:latest
+    - echo "✅ Backend image built and pushed"
+  artifacts:
+    paths:
+      - backend/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*$/
+
+build:frontend:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building frontend Docker image..."
+    - cd frontend
+    - docker build --build-arg NODE_ENV=production --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg BACKEND_URL=$BACKEND_URL --target final -t $DOCKER_IMAGE_PREFIX/frontend:$FRONTEND_VERSION .
+    - docker build --build-arg NODE_ENV=production --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg BACKEND_URL=$BACKEND_URL --target final -t $DOCKER_IMAGE_PREFIX/frontend:latest .
+    - docker push $DOCKER_IMAGE_PREFIX/frontend:$FRONTEND_VERSION
+    - docker push $DOCKER_IMAGE_PREFIX/frontend:latest
+    - echo "✅ Frontend image built and pushed"
+  artifacts:
+    paths:
+      - frontend/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*$/
+
+build:admin-panel:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building admin panel Docker image..."
+    - cd admin-panel
+    - docker build --build-arg NODE_ENV=production --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg BACKEND_URL=$BACKEND_URL --target final -t $DOCKER_IMAGE_PREFIX/admin-panel:$ADMIN_PANEL_VERSION .
+    - docker build --build-arg NODE_ENV=production --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL --build-arg BACKEND_URL=$BACKEND_URL --target final -t $DOCKER_IMAGE_PREFIX/admin-panel:latest .
+    - docker push $DOCKER_IMAGE_PREFIX/admin-panel:$ADMIN_PANEL_VERSION
+    - docker push $DOCKER_IMAGE_PREFIX/admin-panel:latest
+    - echo "✅ Admin panel image built and pushed"
+  artifacts:
+    paths:
+      - admin-panel/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*$/
+
+# =============================================================================
+# SECURITY STAGE
+# =============================================================================
+
+security:scan:
+  stage: security
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - apk add --no-cache curl
+    - curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.48.0
+  script:
+    - echo "Scanning Docker images for vulnerabilities..."
+    - trivy image --severity HIGH,CRITICAL --exit-code 1 $DOCKER_IMAGE_PREFIX/backend:$BACKEND_VERSION
+    - trivy image --severity HIGH,CRITICAL --exit-code 1 $DOCKER_IMAGE_PREFIX/frontend:$FRONTEND_VERSION
+    - trivy image --severity HIGH,CRITICAL --exit-code 1 $DOCKER_IMAGE_PREFIX/admin-panel:$ADMIN_PANEL_VERSION
+    - echo "✅ Security scan completed"
+  artifacts:
+    reports:
+      security: trivy-report.json
+    paths:
+      - trivy-report.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+
+# =============================================================================
+# DEPLOY STAGE
+# =============================================================================
+
+deploy:development:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl kubectl
+    - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+    - mv kustomize /usr/local/bin/
+    - echo "$KUBE_CONFIG_DEV" | base64 -d > kubeconfig
+    - export KUBECONFIG=kubeconfig
+  script:
+    - echo "Deploying to development environment..."
+    - kubectl create namespace $KUBE_NAMESPACE_DEV --dry-run=client -o yaml | kubectl apply -f -
+    - kustomize build k8s/overlays/development | kubectl apply -f -
+    - kubectl rollout status deployment/backend -n $KUBE_NAMESPACE_DEV --timeout=300s
+    - kubectl rollout status deployment/frontend -n $KUBE_NAMESPACE_DEV --timeout=300s
+    - kubectl rollout status deployment/admin-panel -n $KUBE_NAMESPACE_DEV --timeout=300s
+    - echo "✅ Development deployment completed"
+  environment:
+    name: development
+    url: https://dev.webenable-cms.com
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*$/
+
+deploy:staging:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl kubectl
+    - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+    - mv kustomize /usr/local/bin/
+    - echo "$KUBE_CONFIG_STAGING" | base64 -d > kubeconfig
+    - export KUBECONFIG=kubeconfig
+  script:
+    - echo "Deploying to staging environment..."
+    - kubectl create namespace $KUBE_NAMESPACE_STAGING --dry-run=client -o yaml | kubectl apply -f -
+    - kustomize build k8s/overlays/staging | kubectl apply -f -
+    - kubectl rollout status deployment/backend -n $KUBE_NAMESPACE_STAGING --timeout=300s
+    - kubectl rollout status deployment/frontend -n $KUBE_NAMESPACE_STAGING --timeout=300s
+    - kubectl rollout status deployment/admin-panel -n $KUBE_NAMESPACE_STAGING --timeout=300s
+    - echo "✅ Staging deployment completed"
+  environment:
+    name: staging
+    url: https://staging.webenable-cms.com
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+  when: manual
+
+deploy:production:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+    - mv kustomize /usr/local/bin/
+    # Authenticate with GCP
+    - echo "$GCP_SERVICE_ACCOUNT_KEY" | base64 -d > /tmp/gcp-key.json
+    - gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud container clusters get-credentials $GCP_CLUSTER_NAME --region $GCP_CLUSTER_REGION
+  script:
+    - echo "Deploying to GKE Autopilot production environment..."
+    # Install cert-manager if not exists
+    - helm repo add jetstack https://charts.jetstack.io
+    - helm repo update
+    - helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.0 --set installCRDs=true --wait || true
+    # Configure Cloudflare DNS
+    - kubectl create secret generic cloudflare-api-token --from-literal=api-token=$CLOUDFLARE_API_TOKEN -n cert-manager --dry-run=client -o yaml | kubectl apply -f -
+    - kubectl apply -f k8s/gke-autopilot/cluster-issuer.yaml
+    # Deploy application
+    - kubectl create namespace $KUBE_NAMESPACE_PROD --dry-run=client -o yaml | kubectl apply -f -
+    - kubectl apply -f k8s/gke-autopilot/storage-class.yaml
+    - kustomize build k8s/overlays/production | kubectl apply -f -
+    - kubectl apply -f k8s/gke-autopilot/ingress.yaml
+    - kubectl apply -f k8s/gke-autopilot/hpa.yaml
+    # Wait for deployment
+    - kubectl rollout status deployment/backend -n $KUBE_NAMESPACE_PROD --timeout=300s
+    - kubectl rollout status deployment/frontend -n $KUBE_NAMESPACE_PROD --timeout=300s
+    - kubectl rollout status deployment/admin-panel -n $KUBE_NAMESPACE_PROD --timeout=300s
+    - echo "✅ GKE Autopilot Production deployment completed"
+  environment:
+    name: production
+    url: https://webenable-cms.com
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+  when: manual
+
+# =============================================================================
+# POST-DEPLOYMENT VERIFICATION
+# =============================================================================
+
+verify:health:
+  stage: .post
+  image: curlimages/curl:latest
+  script:
+    - echo "Verifying application health..."
+    - |
+      if [ "$CI_ENVIRONMENT_NAME" = "development" ]; then
+        HEALTH_URL="https://dev.webenable-cms.com/api/health"
+      elif [ "$CI_ENVIRONMENT_NAME" = "staging" ]; then
+        HEALTH_URL="https://staging.webenable-cms.com/api/health"
+      elif [ "$CI_ENVIRONMENT_NAME" = "production" ]; then
+        HEALTH_URL="https://webenable-cms.com/api/health"
+      fi
+    - echo "Checking health endpoint: $HEALTH_URL"
+    - curl -f -s -o /dev/null -w "HTTP Status: %{http_code}\n" $HEALTH_URL
+    - echo "✅ Health check passed"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
+  dependencies:
+    - deploy:development
+    - deploy:staging
+    - deploy:production 
